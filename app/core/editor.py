@@ -195,6 +195,25 @@ def insert_image(doc: PdfDocument, page_index: int, rect: fitz.Rect,
     doc.mark_dirty()
 
 
+def image_source_bytes(source) -> bytes:
+    """Return the raw image bytes for a path or bytes-like source."""
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source)
+    with open(source, "rb") as f:
+        return f.read()
+
+
+def insert_image_bytes(doc: PdfDocument, page_index: int, rect: fitz.Rect, source,
+                       keep_aspect: bool = False) -> None:
+    page = doc.page(page_index)
+    try:
+        page.insert_image(fitz.Rect(rect), stream=image_source_bytes(source),
+                          keep_proportion=keep_aspect)
+    except Exception as exc:  # noqa: BLE001
+        raise PdfError(f"Image insert failed: {exc}") from exc
+    doc.mark_dirty()
+
+
 def replace_image(doc: PdfDocument, page_index: int, image_xref: int,
                   image_path: str) -> None:
     """Replace an embedded image in place."""

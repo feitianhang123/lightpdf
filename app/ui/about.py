@@ -20,8 +20,13 @@ class AboutDialog(QDialog):
         text.setWordWrap(True)
         text.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
+        from ..version import __version__
+        version = QLabel(f"版本 v{__version__}")
+        version.setStyleSheet("color:#2E7D32;")
+
         layout = QVBoxLayout(self)
         layout.addWidget(text)
+        layout.addWidget(version)
 
         qr_row = QHBoxLayout()
         qr_row.addStretch()

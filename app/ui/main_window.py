@@ -548,6 +548,7 @@ class MainWindow(QMainWindow):
 
     def _save_tab_doc(self, tab: DocumentTab, path: Optional[str] = None,
                       force_prompt: bool = False) -> bool:
+        self._bake_current()
         target = None if force_prompt else (path or tab.doc.path)
         if not target:
             target, _ = QFileDialog.getSaveFileName(self, tr("act.save_as"),
@@ -727,14 +728,13 @@ class MainWindow(QMainWindow):
             return
         from PIL import Image
         w, h = Image.open(path).size
-        rect = QRectF(dp.x(), dp.y(), 200.0, 200.0 * h / max(1, w))
-        tab.push_undo()
-        try:
-            insert_image(tab.doc, index, tab.view.page_to_pdf_rect(index, rect), path)
-        except PdfError as exc:
-            QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
-        tab.view.invalidate_page(index)
-        self.left.thumbnails.refresh_page(tab.doc, index) if tab is self._cur_tab() else None
+        disp_w = 260.0
+        rect = QRectF(dp.x(), dp.y(), disp_w, disp_w * h / max(1, w))
+        pdf_rect = tab.view.page_to_pdf_rect(index, rect)
+        tab.view.add_pending_image(index, pdf_rect, path)
+        tab.doc.mark_dirty()
+        self._update_title()
+        self.set_tool("select") if tab is self._cur_tab() else None
 
     def _on_rect_picked(self, tab: DocumentTab, index: int, rect: QRectF, tool: str) -> None:
         if tab is not self._cur_tab():
@@ -836,9 +836,22 @@ class MainWindow(QMainWindow):
         self._update_undo_redo()
 
     # ------------------------------------------------------------------ pages
+    def _bake_current(self) -> None:
+        """Write any pending overlay images into the document before use."""
+        tab = self._cur_tab()
+        if tab and tab.view.has_pending_images():
+            pages = {im["page"] for im in tab.view.pending_images}
+            tab.view.bake_images()
+            if tab is self._cur_tab():
+                for p in pages:
+                    tab.view.invalidate_page(p)
+                    self.left.thumbnails.refresh_page(tab.doc, p)
+
     def _require_tab(self) -> Optional[DocumentTab]:
         tab = self._cur_tab()
-        if not tab:
+        if tab:
+            self._bake_current()
+        else:
             QMessageBox.information(self, tr("msg.no_doc.title"), tr("msg.no_doc.body"))
         return tab
 

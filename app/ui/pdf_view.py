@@ -81,6 +81,9 @@ class PdfView(QGraphicsView):
         self._move_index: Optional[int] = None
         self._move_last_pdf = None
         self._move_snapshot: bool = False
+        self.pending_images: List[dict] = []
+        self._pending_owner = None
+        self._img_drag = None
         self._drag_rect_item: Optional[QGraphicsRectItem] = None
         self._ink_points: List[QPointF] = []
         self._current_page = 0
@@ -94,6 +97,10 @@ class PdfView(QGraphicsView):
 
     # ------------------------------------------------------------------ setup
     def set_document(self, doc: Optional[PdfDocument]) -> None:
+        if doc is not self._pending_owner:
+            self.pending_images.clear()
+            self._img_drag = None
+            self._pending_owner = doc
         self.doc = doc
         self.spans_cache.clear()
         self._rendered.clear()
@@ -163,6 +170,7 @@ class PdfView(QGraphicsView):
         self._geoms.sort(key=lambda g: g.index)
         right = max((g.x + g.w) for g in self._geoms) + self._margin
         self._scene.setSceneRect(0, 0, right, y)
+        self._rebuild_pending_items()
 
     def _render_visible(self) -> None:
         if not self.doc or not self.doc.is_open:
@@ -342,6 +350,17 @@ class PdfView(QGraphicsView):
                         self.viewport().setCursor(Qt.SizeAllCursor)
                         event.accept()
                         return
+                    img = self._pending_image_hit(hit[0],
+                                                  self.page_to_pdf_point(hit[0], hit[1]))
+                    if img is not None:
+                        idx, corner = img
+                        self._img_drag = {"index": idx, "corner": corner, "page": hit[0],
+                                          "start": self.page_to_pdf_point(hit[0], hit[1]),
+                                          "rect": fitz.Rect(self.pending_images[idx]["rect"])}
+                        self.viewport().setCursor(Qt.SizeFDiagCursor if corner
+                                                  else Qt.SizeAllCursor)
+                        event.accept()
+                        return
             if self.tool != "select":
                 self._handle_tool_press(event)
                 return
@@ -359,6 +378,22 @@ class PdfView(QGraphicsView):
         super().mouseDoubleClickEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._img_drag is not None:
+            hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
+            if hit:
+                d = self._img_drag
+                pt = self.page_to_pdf_point(hit[0], hit[1])
+                r0 = d["rect"]
+                if d["corner"] is None:
+                    dx = pt.x - d["start"].x
+                    dy = pt.y - d["start"].y
+                    new = fitz.Rect(r0.x0 + dx, r0.y0 + dy, r0.x1 + dx, r0.y1 + dy)
+                else:
+                    new = self._resized_rect(r0, d["corner"], pt, keep_aspect=True)
+                self.pending_images[d["index"]]["rect"] = new
+                self._rebuild_pending_items()
+            event.accept()
+            return
         if self._panning and self._pan_start is not None:
             pos = event.position().toPoint()
             delta = pos - self._pan_start
@@ -397,6 +432,12 @@ class PdfView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._img_drag is not None:
+            self._img_drag = None
+            self.apply_cursor()
+            self.doc.mark_dirty()
+            event.accept()
+            return
         if self._move_xref is not None:
             self._move_xref = None
             self._move_snapshot = False
@@ -425,6 +466,114 @@ class PdfView(QGraphicsView):
             self.viewport().setCursor(Qt.OpenHandCursor)
         else:
             self.viewport().setCursor(Qt.ArrowCursor)
+
+    # ------------------------------------------------------- pending images
+    def add_pending_image(self, page: int, rect, source) -> None:
+        """Add an image as a movable/resizable overlay (baked into the PDF on
+        save/print)."""
+        self.pending_images.append({"page": int(page), "rect": fitz.Rect(rect),
+                                    "source": source, "item": None})
+        self._rebuild_pending_items()
+
+    def _pixmap_for(self, source) -> QPixmap:
+        pm = QPixmap()
+        if isinstance(source, (bytes, bytearray)):
+            pm.loadFromData(bytes(source))
+        else:
+            pm.load(str(source))
+        return pm
+
+    def _rebuild_pending_items(self) -> None:
+        for im in self.pending_images:
+            if im.get("item") is not None:
+                try:
+                    self._scene.removeItem(im["item"])
+                except Exception:  # noqa: BLE001
+                    pass
+                im["item"] = None
+        if not self.doc or not self.doc.is_open or not self._geoms:
+            return
+        for im in self.pending_images:
+            pg = im["page"]
+            if pg < 0 or pg >= len(self._geoms):
+                continue
+            g = self._geoms[pg]
+            r = im["rect"]
+            x = g.x + r.x0 * self.zoom
+            y = g.y + r.y0 * self.zoom
+            w = max(1, int(r.width * self.zoom))
+            h = max(1, int(r.height * self.zoom))
+            pm = self._pixmap_for(im["source"])
+            if pm.isNull():
+                continue
+            item = QGraphicsPixmapItem(pm.scaled(w, h, Qt.IgnoreAspectRatio,
+                                                 Qt.SmoothTransformation))
+            item.setPos(x, y)
+            item.setZValue(5)
+            item.setTransformationMode(Qt.SmoothTransformation)
+            self._scene.addItem(item)
+            im["item"] = item
+
+    def has_pending_images(self) -> bool:
+        return bool(self.pending_images)
+
+    def bake_images(self) -> bool:
+        """Write overlay images into the document."""
+        if not self.pending_images or not self.doc:
+            return False
+        from ..core import editor as ed
+        for im in self.pending_images:
+            try:
+                ed.insert_image_bytes(self.doc, im["page"], im["rect"], im["source"])
+            except Exception:  # noqa: BLE001
+                pass
+        self.doc.mark_dirty()
+        self.pending_images.clear()
+        self._rebuild_pending_items()
+        return True
+
+    def _pending_image_hit(self, page: int, pt):
+        """Return (index, corner) for a pending image at pdf point pt."""
+        tol = 10.0 / max(0.1, self.zoom)
+        for i in range(len(self.pending_images) - 1, -1, -1):
+            im = self.pending_images[i]
+            if im["page"] != page:
+                continue
+            r = im["rect"]
+            outer = fitz.Rect(r.x0 - tol, r.y0 - tol, r.x1 + tol, r.y1 + tol)
+            if not outer.contains(pt):
+                continue
+            corners = {"nw": (r.x0, r.y0), "ne": (r.x1, r.y0),
+                       "sw": (r.x0, r.y1), "se": (r.x1, r.y1)}
+            for name, (cx, cy) in corners.items():
+                if abs(pt.x - cx) <= tol and abs(pt.y - cy) <= tol:
+                    return i, name
+            return i, None
+        return None
+
+    @staticmethod
+    def _resized_rect(r: fitz.Rect, corner: str, pt, keep_aspect: bool = True) -> fitz.Rect:
+        x0, y0, x1, y1 = r.x0, r.y0, r.x1, r.y1
+        if r.width <= 0 or r.height <= 0:
+            return r
+        ar = r.width / r.height
+        if corner == "se":
+            nw = max(12.0, pt.x - x0)
+            nh = nw / ar if keep_aspect else max(12.0, pt.y - y0)
+            return fitz.Rect(x0, y0, x0 + nw, y0 + nh)
+        if corner == "sw":
+            nw = max(12.0, x1 - pt.x)
+            nh = nw / ar if keep_aspect else max(12.0, pt.y - y0)
+            return fitz.Rect(x1 - nw, y0, x1, y0 + nh)
+        if corner == "ne":
+            nw = max(12.0, pt.x - x0)
+            nh = nw / ar if keep_aspect else max(12.0, y1 - pt.y)
+            return fitz.Rect(x0, y1 - nh, x0 + nw, y1)
+        if corner == "nw":
+            nw = max(12.0, x1 - pt.x)
+            nh = nw / ar if keep_aspect else max(12.0, y1 - pt.y)
+            return fitz.Rect(x1 - nw, y1 - nh, x1, y1)
+        return r
 
     def _handle_tool_press(self, event) -> None:
         scene_pos = self.mapToScene(event.position().toPoint())

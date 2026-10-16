@@ -1,14 +1,14 @@
 ﻿[Setup]
 AppId={{B2F5D0E1-7A3C-4E9B-9C21-8F4A6D2E1B33}
 AppName=轻PDF编辑器
-AppVersion=1.0.0
-AppVerName=轻PDF编辑器 1.0.0
+AppVersion=1.0.1
+AppVerName=轻PDF编辑器 1.0.1
 AppPublisher=轻PDF编辑器
 DefaultDirName={autopf}\轻PDF编辑器
 DefaultGroupName=轻PDF编辑器
 DisableProgramGroupPage=yes
 OutputDir=F:\自写软件\PDF编辑逆向软件\安装包
-OutputBaseFilename=轻PDF编辑器_安装程序
+OutputBaseFilename=setup
 SetupIconFile=F:\自写软件\PDF编辑逆向软件\icon.ico
 UninstallDisplayIcon={app}\轻PDF编辑器.exe
 UninstallDisplayName=轻PDF编辑器
