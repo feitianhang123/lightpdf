@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# Installer output
+安装包/
+
+# Personal donation QR codes (kept out of the public repo)
+resources/
+
+# Logs / temp
+*.log
+lightpdf_crash.log
