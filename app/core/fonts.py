@@ -1,23 +1,38 @@
-"""Enumerate locally installed fonts and resolve their files.
+"""Enumerate locally installed fonts and resolve their files (cross-platform).
 
-Windows fonts are registered under
+- Windows: registry under
   HKLM/HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts
-as  "<Family> (<Type>)" -> "<file name or full path>".
+- Linux/macOS: fontconfig (`fc-list`) when available, else a directory scan
+  of the usual font locations.
 """
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 from functools import lru_cache
 from typing import List, Optional, Tuple
 
-_FONT_DIRS = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
-              os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts")]
+_WIN_FONT_DIRS = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
+                  os.path.join(os.environ.get("LOCALAPPDATA", ""),
+                               "Microsoft", "Windows", "Fonts")]
+
+_UNIX_FONT_DIRS = [
+    "/usr/share/fonts", "/usr/local/share/fonts",
+    "/usr/share/fonts/truetype", "/usr/share/fonts/opentype",
+    os.path.expanduser("~/.fonts"),
+    os.path.expanduser("~/.local/share/fonts"),
+    "/System/Library/Fonts", "/Library/Fonts",
+    os.path.expanduser("~/Library/Fonts"),
+]
+
+_EXT = (".ttf", ".otf", ".ttc")
 
 
-def _resolve(filename: str) -> Optional[str]:
+def _resolve_win(filename: str) -> Optional[str]:
     if os.path.isabs(filename) and os.path.isfile(filename):
         return filename
-    for d in _FONT_DIRS:
+    for d in _WIN_FONT_DIRS:
         if d and os.path.isfile(os.path.join(d, filename)):
             return os.path.join(d, filename)
     return None
@@ -41,20 +56,18 @@ def _reg_entries(root, subkey: str) -> List[Tuple[str, str]]:
             if not isinstance(data, str):
                 continue
             family = name.split(" (")[0].strip()
-            path = _resolve(data)
+            path = _resolve_win(data)
             if path:
                 out.append((family, path))
     finally:
         try:
-            winreg.CloseKey(key)
+            winreg.CloseKey(key)  # type: ignore[name-defined]
         except Exception:  # noqa: BLE001
             pass
     return out
 
 
-@lru_cache(maxsize=1)
-def system_fonts() -> List[Tuple[str, str]]:
-    """Return a sorted list of (label, font file path) for installed fonts."""
+def _windows_fonts() -> List[Tuple[str, str]]:
     entries: List[Tuple[str, str]] = []
     try:
         import winreg
@@ -65,17 +78,48 @@ def system_fonts() -> List[Tuple[str, str]]:
     except Exception:  # noqa: BLE001
         pass
     if not entries:
-        # fallback: scan the fonts directory
-        for d in _FONT_DIRS:
+        for d in _WIN_FONT_DIRS:
             if d and os.path.isdir(d):
                 for fn in os.listdir(d):
-                    if fn.lower().endswith((".ttf", ".otf", ".ttc")):
+                    if fn.lower().endswith(_EXT):
                         entries.append((os.path.splitext(fn)[0], os.path.join(d, fn)))
+    return entries
+
+
+def _unix_fonts() -> List[Tuple[str, str]]:
+    out: List[Tuple[str, str]] = []
+    try:
+        r = subprocess.run(["fc-list", "--format", "%{family[0]}|%{file}\n"],
+                           capture_output=True, text=True, timeout=15)
+        for line in (r.stdout or "").splitlines():
+            if "|" not in line:
+                continue
+            fam, path = line.split("|", 1)
+            fam, path = fam.strip(), path.strip()
+            if fam and os.path.isfile(path):
+                out.append((fam, path))
+    except Exception:  # noqa: BLE001
+        pass
+    if not out:
+        for d in _UNIX_FONT_DIRS:
+            if not os.path.isdir(d):
+                continue
+            for root, _dirs, files in os.walk(d):
+                for fn in files:
+                    if fn.lower().endswith(_EXT):
+                        out.append((os.path.splitext(fn)[0], os.path.join(root, fn)))
+    return out
+
+
+@lru_cache(maxsize=1)
+def system_fonts() -> List[Tuple[str, str]]:
+    """Return a sorted list of (label, font file path) for installed fonts."""
+    entries = _windows_fonts() if sys.platform.startswith("win") else _unix_fonts()
     seen = set()
     uniq: List[Tuple[str, str]] = []
     for fam, path in entries:
         key = fam.lower()
-        if key in seen:
+        if not fam or key in seen:
             continue
         seen.add(key)
         uniq.append((fam, path))
@@ -84,5 +128,4 @@ def system_fonts() -> List[Tuple[str, str]]:
 
 
 def is_font_file(value) -> bool:
-    return isinstance(value, str) and value.lower().endswith((".ttf", ".otf", ".ttc")) \
-        and os.path.isfile(value)
+    return isinstance(value, str) and value.lower().endswith(_EXT) and os.path.isfile(value)

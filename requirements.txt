@@ -1,15 +1,14 @@
-PySide6>=6.6
+# Core runtime (required)
+PySide6>=6.5
 PyMuPDF>=1.24
-pikepdf>=8
-pypdf>=4
 Pillow>=10
 numpy>=1.26
-opencv-python>=4.8
-pytesseract>=0.3
 
-# Optional: PDF -> Word conversion
-# pdf2docx>=0.5
-
+# Optional (features degrade gracefully if missing; NOT needed to run):
+# opencv-python>=4.8     # sharper difference regions in document compare
+# pytesseract>=0.3       # OCR (not exposed in the menu)
+# pdf2docx>=0.5          # PDF -> Word (not exposed in the menu)
+#
 # External tools (installed separately, not pip):
 #   - Tesseract-OCR  (OCR)            https://github.com/UB-Mannheim/tesseract/wiki
 #   - Ghostscript    (PDF/A export)   https://www.ghostscript.com/

@@ -12,6 +12,11 @@ dist/
 
 # Installer output
 安装包/
+*.deb
+
+# Extracted Linux build kit / in-place build (venv + bundled app)
+/linux/
+.venv-build/
 
 # Personal donation QR codes (kept out of the public repo)
 resources/

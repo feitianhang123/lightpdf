@@ -17,7 +17,9 @@ TEXT = "#1B3A1E"
 PAGE_AREA = "#9EC9A1"   # document scroll area
 
 QSS = f"""
-* {{ font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; font-size: 13px; color: {TEXT}; }}
+* {{ font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", "Noto Sans SC",
+     "WenQuanYi Micro Hei", "Source Han Sans SC", "PingFang SC", sans-serif;
+     font-size: 13px; color: {TEXT}; }}
 QMainWindow, QDialog {{ background: {BG}; }}
 QMenuBar {{ background: {TOOLBAR}; }}
 QMenuBar::item {{ padding: 4px 10px; background: transparent; border-radius: 4px; }}
