@@ -1,7 +1,27 @@
 # 在银河麒麟 V10 SP1（aarch64 / 飞腾 D3000）上构建 `.deb`
 
 > PyInstaller **不能跨平台编译**，所以必须在**麒麟本机**（或同架构 Linux）构建。
-> 下面三步即可产出并安装 `lightpdf_1.0.1_arm64.deb`。
+> 下面三步即可产出并安装 `lightpdf_1.0.3_arm64.deb`。
+>
+> 版本号已改为**自动读取 `app/version.py`**（`build_deb.sh` 不再硬编码），以后升版本只改那一处。
+
+## 0. 最快路径：一条命令
+
+本仓库已包含全部源码。在麒麟机上 clone（或拷贝）后直接跑：
+
+```bash
+git clone https://github.com/feitianhang123/lightpdf.git
+cd lightpdf
+bash packaging/linux/build-kylin.sh        # 缺依赖会自动装，然后直接打包
+# 产物：dist/lightpdf_1.0.3_arm64.deb
+```
+
+`build-kylin.sh` 会自动完成：修正 CRLF 换行 → 缺 `python3`/`venv` 时先装系统依赖 →
+调用 `build_deb.sh`（建虚拟环境 → 装 PySide6/PyMuPDF → PyInstaller 打包 → 组装 `.deb`）。
+
+> **离线拷贝注意**：只需拷贝仓库本身。若连同本地构建缓存一起拷，请先删掉
+> `.venv-build/`（约 625 MB）—— `build_deb.sh` 每次都会重建它，拷过去纯属浪费。
+> 只想单独装系统依赖时：`bash packaging/linux/install_deps.sh`。
 
 ## 1. 把整个项目目录拷到麒麟
 
@@ -31,12 +51,12 @@ bash packaging/linux/build_deb.sh
 脚本会自动：创建虚拟环境 → 安装 PySide6 / PyMuPDF / Pillow / numpy / pyinstaller
 → 用 PyInstaller 打包（onedir）→ 组装并生成 `.deb`。
 
-产物：`dist/lightpdf_1.0.1_arm64.deb`（x86_64 上为 `amd64`）
+产物：`dist/lightpdf_1.0.3_arm64.deb`（x86_64 上为 `amd64`）
 
 ## 4. 安装 / 卸载
 
 ```bash
-sudo dpkg -i dist/lightpdf_1.0.1_arm64.deb
+sudo dpkg -i dist/lightpdf_1.0.3_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 
@@ -62,6 +82,6 @@ sudo apt-get -f install     # 若提示缺依赖，自动补齐
 
 ## 版本信息
 
-- 应用版本：`1.0.1`（见 `app/version.py`）
+- 应用版本：`1.0.3`（见 `app/version.py`）
 - 包名：`lightpdf`，桌面显示名：**轻PDF编辑器**
 - 架构：脚本用 `dpkg --print-architecture` 自动识别（飞腾 D3000 → `arm64`）

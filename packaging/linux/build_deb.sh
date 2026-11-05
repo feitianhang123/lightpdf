@@ -7,7 +7,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 PKG="lightpdf"
-VER="1.0.1"
+# 版本号：直接读 app/version.py，保证与代码一致（不要手改这里）
+VER="$(sed -n 's/^__version__ *= *"\([^"]*\)".*/\1/p' app/version.py | head -1)"
+[ -n "$VER" ] || VER="1.0.3"
 ARCH="$(dpkg --print-architecture)"      # arm64 on Phytium, amd64 on x86
 APP_NAME="轻PDF编辑器"
 ICON_SRC="packaging/linux/lightpdf.png"
