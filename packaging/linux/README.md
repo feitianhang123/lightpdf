@@ -19,8 +19,38 @@ bash packaging/linux/build-kylin.sh        # 缺依赖会自动装，然后直�
 `build-kylin.sh` 会自动完成：修正 CRLF 换行 → 缺 `python3`/`venv` 时先装系统依赖 →
 调用 `build_deb.sh`（建虚拟环境 → 装 PySide6/PyMuPDF → PyInstaller 打包 → 组装 `.deb`）。
 
-> **离线拷贝注意**：只需拷贝仓库本身。若连同本地构建缓存一起拷，请先删掉
-> `.venv-build/`（约 625 MB）—— `build_deb.sh` 每次都会重建它，拷过去纯属浪费。
+### 离线拷贝时：要拷什么、不用拷什么
+
+`build-kylin.sh` 只依赖**源码 + 三个脚本 + 图标/资源**，其余全是可重建的缓存。整个工作区
+有 1.2 GB，但真正需要拷的只有约 **0.6 MB**（48 个文件）。
+
+**✅ 必须拷贝**（工程根目录）
+
+| 路径 | 用途 |
+|---|---|
+| `packaging/linux/` | `build-kylin.sh`、`build_deb.sh`、`install_deps.sh`、`lightpdf.png` |
+| `app/` | 全部 Python 源码（含 `version.py`，**版本号从这里读**） |
+| `run_app.py` | PyInstaller 打包入口 |
+| `requirements.txt` | 依赖声明 |
+| `icon.ico`、`resources/` | 图标与「关于」页资源（`--add-data` 用） |
+
+**❌ 不要拷贝**（要么自动重建，要么与 Linux 无关）
+
+| 路径 | 原因 |
+|---|---|
+| `.venv-build/` | 625 MB 的 Linux 虚拟环境，`build_deb.sh` 开头就 `rm -rf` 重建 |
+| `build/`、`dist/` | 265 MB + 315 MB 的旧构建产物，重新打包时会清掉 |
+| `*__pycache__/` | 字节码缓存 |
+| `*.deb` / `setup.exe` | 旧安装包，不是构建输入 |
+
+> 💡 **最省事的做法**：工程根目录下的 **`lightpdf-linux-build-1.0.3.zip`**（0.6 MB）已经
+> 按上面的清单打好包（`.sh` 已转 LF）。拷它过去解压即用：
+> ```bash
+> unzip lightpdf-linux-build-1.0.3.zip -d ~/lightpdf && cd ~/lightpdf
+> bash packaging/linux/build-kylin.sh
+> ```
+>
+> 也可以直接 `git clone` 仓库 —— 仓库里不含 `.venv-build/`、`build/`、`dist/`。
 > 只想单独装系统依赖时：`bash packaging/linux/install_deps.sh`。
 
 ## 1. 把整个项目目录拷到麒麟

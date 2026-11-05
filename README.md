@@ -58,9 +58,14 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 > 必须在目标机（同架构 Linux）上构建，PyInstaller 不支持跨平台编译。
 
 ```bash
+git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
 # 产物：dist/lightpdf_1.0.3_arm64.deb
 ```
+
+离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
+`resources/`、`packaging/linux/`；**不要**拷 `.venv-build/`、`build/`、`dist/` 等缓存。
+详单见 [`packaging/linux/README.md`](packaging/linux/README.md#离线拷贝时要拷什么不用拷什么)。
 
 也可分步执行：`packaging/linux/install_deps.sh`（装系统依赖）→ `packaging/linux/build_deb.sh`（打包）。
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
