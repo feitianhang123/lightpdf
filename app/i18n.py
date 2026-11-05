@@ -25,9 +25,9 @@ STRINGS: dict[str, dict[str, str]] = {
     "lang.en": {"zh": "English", "en": "English"},
     "about.title": {"zh": "关于", "en": "About"},
     "about.body": {
-        "zh": "轻PDF编辑器\n\n软件为通过类似软件的功能通过 AI 编译，如涉及到侵权请联系作者。\nQQ：10780329\n请作者喝咖啡：",
-        "en": "Light PDF Editor\n\nThis software was built with AI by replicating the features of similar "
-              "software. If it infringes any rights, please contact the author.\n"
+        "zh": "轻PDF编辑器\n\n一个精简版的 PDF 编辑器，基于 PyMuPDF (MuPDF) + PySide6 (Qt) 独立实现。\n仅供学习与交流使用；如涉及侵权请联系作者。\nQQ：10780329\n请作者喝咖啡：",
+        "en": "Light PDF Editor\n\nA trimmed PDF editor, independently implemented with PyMuPDF (MuPDF) + PySide6 (Qt).\n"
+              "For learning and evaluation only; if it infringes any rights, please contact the author.\n"
               "QQ: 10780329\nBuy the author a coffee:"},
     "about.wechat": {"zh": "微信", "en": "WeChat"},
     "about.alipay": {"zh": "支付宝", "en": "Alipay"},
