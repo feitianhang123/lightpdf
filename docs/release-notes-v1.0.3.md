@@ -49,7 +49,12 @@ sudo apt-get -f install     # 若提示缺依赖，自动补齐
 
 ## 完整性校验
 
-- `setup.exe` — 94,147,788 字节，产品版本 **1.0.3**
-- `lightpdf_1.0.3_arm64.deb` — 67,237,856 字节，`Package: lightpdf` / `Version: 1.0.3` / `Architecture: arm64`
+| 文件 | 大小（字节） | SHA-256 |
+|---|---|---|
+| `setup.exe` | 94,147,788 | `2bb24f02cb49a4aecca798fefcbd9a8058c61ba9b948f7f2944f0a4b26ac6b96` |
+| `lightpdf_1.0.3_arm64.deb` | 67,233,248 | `ddc95598d0103d60d73d6733363fdd28db4547e1a5a55e4d1c4e28ae41102fee` |
+
+- `setup.exe` — 产品版本 **1.0.3**（Windows 64 位）
+- `lightpdf_1.0.3_arm64.deb` — `Package: lightpdf` / `Version: 1.0.3` / `Architecture: arm64`（aarch64 ELF）
 
 **完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.1...v1.0.3
