@@ -1,7 +1,7 @@
 # 统一换行：脚本与源码一律 LF，避免在 Linux/麒麟上出现 "bad interpreter"
 *.sh   text eol=lf
 *.py   text eol=lf
-*.iss  text eol=lf
+*.iss  text eol=crlf
 *.spec text eol=lf
 *.md   text eol=lf
 *.txt  text eol=lf
