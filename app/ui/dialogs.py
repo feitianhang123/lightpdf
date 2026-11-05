@@ -403,13 +403,13 @@ class CompareWindow(QDialog):
 
 
 class PrintDialog(QDialog):
-    """Foxit PDF Editor 11 打印对话框的 1:1 复刻。
+    """打印对话框。
 
-    控件、文案、分组与相对布局均取自原版程序资源（DIALOG 7792 "Print" 为主，
-    辅以 7785 "Advanced" / 7789 "Scale 选项" / 7794 "Batch Print" / 7795 "Page Range
-    Options"），原版对话框单位 531 x 308。行为接线到 PyMuPDF + QPrinter 渲染管线：
-    打印范围 / 子集 / 逆序、缩放、多页合一、小册子、平铺、双面、旋转居中、
-    灰度、作为图像、出血标记等均可用。
+    三栏布局：左「预览」（缩放 / 页尺寸 / 纸张 / 翻页滑杆），中「打印范围」
+    （当前页 / 全部 / 自定义页码 / 奇偶子集 / 逆序）与「打印处理」（缩放 /
+    平铺大页面 / 每张多页 / 小册子），右「双面 / 方向 / 打印内容 / 输出」，
+    底部 Advanced / Printing Tips / OK / Cancel。行为接线到 PyMuPDF + QPrinter：
+    灰度、作为图像、出血标记、打印到文件等均可用。
     """
 
     PREVIEW_BG = "#8FB69A"       # 预览底色（浅绿，沿用原工程风格）
@@ -1172,7 +1172,7 @@ class PrintDialog(QDialog):
         self.paper_size_label.setText(paper)
 
     def paper_size_label_name(self) -> str:
-        # 与原版一致：此处显示纸张「尺寸」而非纸张名称
+        # 此处显示纸张「尺寸」而非纸张名称
         return "11.7 x 8.3 in" if self._landscape() else "8.3 x 11.7 in"
 
     def _paper_canvas(self, content: QImage) -> QImage:
@@ -1239,7 +1239,7 @@ class PrintDialog(QDialog):
 
     # ================================================================ 打印
     def _open_properties(self) -> None:
-        """打开系统打印机属性（原版 &Properties）。"""
+        """打开系统的打印机属性对话框。"""
         name = self.printer_combo.currentText()
         if not name:
             return
@@ -1255,7 +1255,7 @@ class PrintDialog(QDialog):
             QMessageBox.warning(self, tr("print.properties"), str(exc))
 
     def _open_advanced(self) -> None:
-        """原版 Advanced = PCL 驱动优化（此处给出说明）。"""
+        """PCL 打印优化说明。"""
         QMessageBox.information(self, tr("print.advanced"), tr("print.adv_text"))
 
     def _open_tips(self) -> None:

@@ -25,7 +25,7 @@ bash packaging/linux/build-kylin.sh        # 缺依赖会自动装，然后直�
 
 ## 1. 把整个项目目录拷到麒麟
 
-把整个 `PDF编辑逆向软件` 目录（例如打包成 zip）复制到麒麟机器，例如放到 `~/lightpdf`。
+把整个项目目录（例如打包成 zip）复制到麒麟机器，例如放到 `~/lightpdf`。
 
 ```bash
 cd ~/lightpdf

@@ -231,7 +231,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "print.booklet.front": {"zh": "仅正面", "en": "Front side only"},
     "print.booklet.back": {"zh": "仅背面", "en": "Back side only"},
     "print.booklet.autorotate": {"zh": "自动旋转页面", "en": "Auto-rotate pages"},
-    # --- Foxit 打印对话框 1:1 复刻新增（DIALOG 7792 等）
+    # --- 打印对话框（多栏布局）文案
     "print.name": {"zh": "名称:", "en": "&Name:"},
     "print.properties": {"zh": "属性", "en": "&Properties"},
     "print.ok": {"zh": "确定", "en": "OK"},
@@ -287,8 +287,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "zh": "· 双面打印需打印机支持；\n· 小册子会自动启用横向与短边翻转；\n· 缩放选“无”时按 100% 输出；\n· 打印时间较长时可勾选“作为图像打印”。",
         "en": "\u00b7 Duplex requires printer support.\n\u00b7 Booklet forces landscape + short-edge flip.\n\u00b7 \"None\" scale prints at 100%.\n\u00b7 Tick \"Print as image\" if normal printing fails."},
     "print.adv_text": {
-        "zh": "高级 (PCL 优化)：原版用于自动检测支持 PCL 的打印机并优化打印速度，\n具体取决于打印机驱动。此精简版沿用系统打印驱动。",
-        "en": "Advanced (PCL optimization): the original auto-detects PCL-capable printers to\nspeed up printing; this depends on your printer driver. This build uses the system driver."},
+        "zh": "高级 (PCL 优化)：用于自动检测支持 PCL 的打印机并优化打印速度，\n具体取决于打印机驱动。本软件沿用系统打印驱动。",
+        "en": "Advanced (PCL optimization): auto-detects PCL-capable printers to speed up\nprinting; this depends on your printer driver. This build uses the system driver."},
     # --- 打印失败提示（针对网络复合机等驱动）
     "print.default_printer": {"zh": "默认打印机", "en": "default printer"},
     "print.printer_missing": {

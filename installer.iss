@@ -7,9 +7,9 @@ AppPublisher=轻PDF编辑器
 DefaultDirName={autopf}\轻PDF编辑器
 DefaultGroupName=轻PDF编辑器
 DisableProgramGroupPage=yes
-OutputDir=F:\自写软件\PDF编辑逆向软件\安装包
+OutputDir=安装包
 OutputBaseFilename=setup
-SetupIconFile=F:\自写软件\PDF编辑逆向软件\icon.ico
+SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\轻PDF编辑器.exe
 UninstallDisplayName=轻PDF编辑器
 Compression=lzma2
@@ -26,8 +26,8 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"
 
 [Files]
-Source: "F:\自写软件\PDF编辑逆向软件\dist\轻PDF编辑器.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "F:\自写软件\PDF编辑逆向软件\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\轻PDF编辑器.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\轻PDF编辑器"; Filename: "{app}\轻PDF编辑器.exe"; IconFilename: "{app}\icon.ico"; WorkingDir: "{app}"
