@@ -13,13 +13,13 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe` |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.3_arm64.deb` |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.4_arm64.deb` |
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.3_arm64.deb
+sudo dpkg -i lightpdf_1.0.4_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -60,7 +60,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.3_arm64.deb
+# 产物：dist/lightpdf_1.0.4_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -71,6 +71,18 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.4
+
+- **打印**：修复**已签章 PDF 的红色印章/电子签章印不出来**的问题。
+  - 根因：红章在 PDF 里是**电子签章域（Signature Widget）的注释外观流**，而打印管线用
+    `annots=False` 渲染，把这一层整个丢掉了 → 预览和打印都没有章。
+  - 修复：打印渲染默认**包含注释**；新增**「打印印章与电子签章」**复选框，可一键开关
+    （取消勾选则只打印正文，印章不会出现在预览与结果中）。
+  - 同时修掉「每张多页 / 小册子」忽略该开关的旧 bug（原先硬编码为带注释），
+    现在 **预览 == 输出 == 开关状态**，全部模式一致。
+- 「打印内容」默认由「文档」改为**「文档和标记」**（已签章文档打开即可看到红章）；
+  下拉框与印章复选框**双向联动**，不会互相矛盾。
 
 ### 1.0.3
 

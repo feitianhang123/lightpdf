@@ -279,6 +279,12 @@ STRINGS: dict[str, dict[str, str]] = {
     "print.what.markup": {"zh": "文档和标记", "en": "Document and Markups"},
     "print.what.stamps": {"zh": "文档和图章", "en": "Document and Stamps"},
     "print.what.formfields": {"zh": "仅表单域", "en": "Form Fields only"},
+    "print.signature": {"zh": "打印印章与电子签章", "en": "Print stamps and signatures"},
+    "print.signature.tip": {
+        "zh": "勾选后打印文档中的红色印章、电子签章、图章、批注等「注释」内容；\n"
+              "取消勾选则只打印文档正文（印章不会出现在预览和打印结果中）。",
+        "en": "When checked, prints annotations such as red seals, digital signatures,\n"
+              "stamps and comments. When unchecked, only the document body is printed."},
     "print.output": {"zh": "输出", "en": "Output"},
     "print.output.summarize": {"zh": "汇总注释", "en": "Summarize Comments"},
     "print.output.overprint": {"zh": "模拟叠印", "en": "Simulate Overprinting"},

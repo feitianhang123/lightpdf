@@ -787,7 +787,15 @@ class PrintDialog(QDialog):
         self.what_combo.addItem(tr("print.what.markup"), "markup")
         self.what_combo.addItem(tr("print.what.stamps"), "stamps")
         self.what_combo.addItem(tr("print.what.formfields"), "formfields")
+        # 默认「文档和标记」：带印章/签章的 PDF（如已签章的检验报告）打开即可看到红章
+        self.what_combo.setCurrentIndex(1)
         wv.addWidget(self.what_combo)
+        # 直接、易懂的开关：打印 / 不打印 印章与电子签章
+        self.signature_check = QCheckBox(tr("print.signature"))
+        self.signature_check.setChecked(True)
+        self.signature_check.setToolTip(tr("print.signature.tip"))
+        self.signature_check.setMinimumWidth(1)
+        wv.addWidget(self.signature_check)
         self.summarize_check = QCheckBox(tr("print.output.summarize"))
         wv.addWidget(self.summarize_check)
         v.addWidget(what)
@@ -823,8 +831,10 @@ class PrintDialog(QDialog):
             b.toggled.connect(self._sync_range)
         for w in (self.subset_combo, self.nup_combo, self.nup_order):
             w.currentIndexChanged.connect(self._update_preview)
-        for w in (self.orient_combo, self.what_combo):
-            w.currentIndexChanged.connect(self._update_preview)
+        self.orient_combo.currentIndexChanged.connect(self._update_preview)
+        # 打印内容下拉 与 印章复选框 互为镜像（见 _sync_what / _on_signature_toggled）
+        self.what_combo.currentIndexChanged.connect(self._sync_what)
+        self.signature_check.toggled.connect(self._on_signature_toggled)
         self.pages_edit.textChanged.connect(self._update_preview)
         self.copies_spin.valueChanged.connect(self._sync_collate)
         self.custom_edit.textChanged.connect(self._update_preview)
@@ -895,7 +905,23 @@ class PrintDialog(QDialog):
         self._update_preview()
 
     def _sync_what(self) -> None:
-        # 仅“文档和标记 / 文档和图章”带批注；表单域暂按文档处理
+        """「打印内容」下拉 → 印章复选框（仅「文档」不含注释）。"""
+        want = self.what_combo.currentData() != "doc"
+        if self.signature_check.isChecked() != want:
+            self.signature_check.blockSignals(True)
+            self.signature_check.setChecked(want)
+            self.signature_check.blockSignals(False)
+        self._update_preview()
+
+    def _on_signature_toggled(self, on: bool) -> None:
+        """印章复选框 →「打印内容」下拉，保证两个控件始终一致。"""
+        want = "markup" if on else "doc"
+        if self.what_combo.currentData() != want:
+            self.what_combo.blockSignals(True)
+            idx = self._index_of(self.what_combo, want)
+            if idx is not None:
+                self.what_combo.setCurrentIndex(idx)
+            self.what_combo.blockSignals(False)
         self._update_preview()
 
     def _sync_collate(self, value: int) -> None:
@@ -992,7 +1018,12 @@ class PrintDialog(QDialog):
         return 4, 4
 
     def _annot_mode(self) -> bool:
-        return self.what_combo.currentData() in ("markup", "stamps")
+        """是否渲染注释（印章 / 电子签章 / 图章 / 批注）。
+
+        红章、电子签章在 PDF 里是**注释（Widget/Signature）的外观流**，
+        `get_pixmap(annots=False)` 会把它们整层丢弃 —— 必须 True 才能打印。
+        """
+        return self.signature_check.isChecked()
 
     # ================================================================ 预览
     def _markup_source(self):
@@ -1150,7 +1181,7 @@ class PrintDialog(QDialog):
         annots = self._annot_mode()
         cur = items[self._preview_index]
         if kind == "d_side":
-            content = self._render_d_side(cur, True)
+            content = self._render_d_side(cur, annots)
         elif kind == "nup_side":
             content = self._render_nup_side(cur, annots)
         else:
@@ -1371,11 +1402,12 @@ class PrintDialog(QDialog):
         pages = self._pages()
         try:
             if self.h_booklet.isChecked():
-                self._print_sides(painter, printer, self._booklet_output_sides(pages), dpi, True)
+                self._print_sides(painter, printer, self._booklet_output_sides(pages),
+                                  dpi, True, annots)
             elif self.h_nup.isChecked():
                 k = self._pages_per_sheet()
                 groups = [pages[i:i + k] for i in range(0, len(pages), k)]
-                self._print_sides(painter, printer, groups, dpi, False)
+                self._print_sides(painter, printer, groups, dpi, False, annots)
             elif self.h_tile.isChecked():
                 self._print_tiled(painter, printer, pages, dpi, annots)
             else:
@@ -1430,7 +1462,8 @@ class PrintDialog(QDialog):
             if self.bleed_check.isChecked():
                 self._draw_bleed_marks(painter, painter.viewport())
 
-    def _print_sides(self, painter, printer, sides, dpi: int, booklet: bool) -> None:
+    def _print_sides(self, painter, printer, sides, dpi: int, booklet: bool,
+                     annots: bool) -> None:
         first = True
         for side in sides:
             if not first:
@@ -1441,7 +1474,7 @@ class PrintDialog(QDialog):
             for idx, pno in enumerate(side):
                 if pno is None:
                     continue
-                img = self._page_image(pno, dpi, True)
+                img = self._page_image(pno, dpi, annots)
                 if booklet:
                     img = self._maybe_autorotate(img)
                     cell = QRectF(vp.width() / 2.0, 0, vp.width() / 2.0, vp.height())
