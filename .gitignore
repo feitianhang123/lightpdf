@@ -26,3 +26,6 @@ resources/
 # Logs / temp
 *.log
 lightpdf_crash.log
+
+# 麒麟离线打包包（源码快照，仓库已有全部源码，会随版本过期）
+lightpdf-linux-build-*.zip
