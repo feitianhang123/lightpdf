@@ -152,7 +152,7 @@ STRINGS: dict[str, dict[str, str]] = {
 
     # pages menu
     "pages.insert": {"zh": "从 PDF 插入页面...", "en": "Insert Pages from PDF..."},
-    "pages.delete": {"zh": "删除当前页", "en": "Delete Current Page"},
+    "pages.delete": {"zh": "删除页面...", "en": "Delete Pages..."},
     "pages.extract": {"zh": "提取页面...", "en": "Extract Pages..."},
     "pages.split": {"zh": "拆分...", "en": "Split..."},
     "pages.merge": {"zh": "合并 PDF...", "en": "Merge PDFs..."},
@@ -357,6 +357,26 @@ STRINGS: dict[str, dict[str, str]] = {
     "scope.all": {"zh": "全部页面", "en": "All pages"},
     "scope.range": {"zh": "指定页面", "en": "Selected pages"},
     "dlg.rotate.pages": {"zh": "页面（如 1-3,5）", "en": "Pages (e.g. 1-3,5)"},
+
+    # delete pages dialog
+    "dlg.delete.title": {"zh": "删除页面", "en": "Delete Pages"},
+    "dlg.delete.scope": {"zh": "范围", "en": "Scope"},
+    "dlg.delete.range": {"zh": "指定页面（可多页）", "en": "Selected pages (multiple)"},
+    "dlg.delete.pages": {"zh": "页面（如 1-3,5,8-10）", "en": "Pages (e.g. 1-3,5,8-10)"},
+    "dlg.delete.ok": {"zh": "删除", "en": "Delete"},
+    "dlg.delete.total": {"zh": "文档共 {n} 页。", "en": "The document has {n} pages."},
+    "dlg.delete.summary": {"zh": "将删除 {n} 页：{pages}", "en": "Will delete {n} page(s): {pages}"},
+    "dlg.delete.summary_one": {"zh": "将删除第 {n} 页", "en": "Will delete page {n}"},
+    "dlg.delete.summary_none": {"zh": "请输入要删除的页面范围。", "en": "Enter the page range to delete."},
+    "dlg.delete.keep_one": {
+        "zh": "不能删除全部页面，至少要保留 1 页。",
+        "en": "Cannot delete every page; at least one page must remain."},
+    "dlg.delete.ignored": {
+        "zh": "（已自动忽略无效或超出范围的页码）",
+        "en": "(invalid or out-of-range pages were ignored)"},
+    "dlg.delete.undo_hint": {
+        "zh": "删除后可用「编辑 → 撤销」恢复。",
+        "en": "You can restore it later with Edit → Undo."},
 
     # insert pages dialog
     "dlg.insert.title": {"zh": "插入页面", "en": "Insert Pages"},

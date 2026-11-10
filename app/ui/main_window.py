@@ -26,7 +26,8 @@ from ..core.document import PdfDocument, PdfError
 from ..core.editor import insert_image, insert_text_box, replace_span, text_size
 from . import stamps
 from .about import AboutDialog
-from .dialogs import (CompareWindow, HeaderFooterDialog, ImagesToPdfDialog,
+from .dialogs import (CompareWindow, DeletePagesDialog, HeaderFooterDialog,
+                      ImagesToPdfDialog,
                       InsertPagesDialog, MarkupStyleDialog, MergeDialog,
                       PageNumbersDialog, PrintDialog, PropertiesDialog,
                       RotateDialog, SplitDialog, StampSettingsDialog,
@@ -891,17 +892,28 @@ class MainWindow(QMainWindow):
         self._refresh_tab(tab)
 
     def do_delete_page(self) -> None:
+        """删除页面：可选择「当前页」，也可用「1-3,5,8-10」一次删除多页。"""
         tab = self._require_tab()
         if not tab:
             return
-        if QMessageBox.question(self, tr("pages.delete"),
-                                f"{tr('pages.delete')}?") != QMessageBox.Yes:
+        if tab.doc.page_count <= 1:
+            QMessageBox.warning(self, tr("pages.delete"), tr("dlg.delete.keep_one"))
+            return
+        dlg = DeletePagesDialog(tab.doc.page_count, tab.view.current_page(), self)
+        if not dlg.exec():
+            return
+        idxs = dlg.indices()
+        if not idxs:
+            return
+        if len(idxs) >= tab.doc.page_count:
+            QMessageBox.warning(self, tr("msg.failed"), tr("dlg.delete.keep_one"))
             return
         tab.push_undo()
         try:
-            ops.delete_pages(tab.doc, [tab.view.current_page()])
+            ops.delete_pages(tab.doc, idxs)
         except PdfError as exc:
-            QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
+            QMessageBox.critical(self, tr("msg.failed"), str(exc))
+            return
         self._refresh_tab(tab)
 
     def do_move(self, delta: int) -> None:

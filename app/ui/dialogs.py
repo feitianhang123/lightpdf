@@ -215,6 +215,135 @@ class RotateDialog(QDialog):
         return self.pages.text()
 
 
+class DeletePagesDialog(QDialog):
+    """Ask which pages to delete: the current page, or a custom page range.
+
+    Supports a single page as well as multiple pages, e.g. ``1-3,5,8-10``.
+    The dialog live-previews how many pages will be removed and refuses to
+    delete every page (a PDF must keep at least one).
+    """
+
+    def __init__(self, page_count: int, current_page: int, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(tr("dlg.delete.title"))
+        self.page_count = max(1, int(page_count))
+        self.current_page = min(max(0, int(current_page)), self.page_count - 1)
+
+        self.scope = QComboBox()
+        self.scope.addItem(tr("scope.current"), "current")
+        self.scope.addItem(tr("dlg.delete.range"), "range")
+        self.scope.currentIndexChanged.connect(self._sync)
+
+        self.pages = QLineEdit(str(self.current_page + 1))
+        self.pages.setPlaceholderText(tr("dlg.delete.pages"))
+        self.pages.setEnabled(False)
+        self.pages.textChanged.connect(self._refresh)
+
+        self.info = QLabel()
+        self.info.setWordWrap(True)
+        self.info.setStyleSheet("font-weight: bold;")
+        self.hint = QLabel(tr("dlg.delete.total", n=self.page_count) + "  "
+                           + tr("dlg.delete.undo_hint"))
+        self.hint.setWordWrap(True)
+
+        form = QFormLayout(self)
+        form.addRow(tr("dlg.delete.scope"), self.scope)
+        form.addRow(tr("dlg.delete.pages"), self.pages)
+        form.addRow(self.info)
+        form.addRow(self.hint)
+
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.ok_btn = bb.button(QDialogButtonBox.Ok)
+        self.ok_btn.setText(tr("dlg.delete.ok"))
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        form.addRow(bb)
+
+        self.setMinimumWidth(360)
+        self._sync()
+
+    # ------------------------------------------------------------------ logic
+    def _sync(self) -> None:
+        on = self.scope.currentData() == "range"
+        self.pages.setEnabled(on)
+        if on:
+            self.pages.setFocus()
+            self.pages.selectAll()
+        self._refresh()
+
+    def _parse(self, text: str) -> tuple:
+        """``"1-3,5,8-10"``(1 基) → ``(有效页索引(0 基, 去重升序), 是否丢弃过页码)``."""
+        valid: list = []
+        dropped = False
+        for part in text.replace(" ", "").replace("，", ",").split(","):
+            if not part:
+                continue
+            if "-" in part:
+                a, b = part.split("-", 1)
+                if a.isdigit() and b.isdigit():
+                    lo, hi = int(a), int(b)
+                    if lo > hi:
+                        lo, hi = hi, lo
+                    if lo < 1 or hi > self.page_count:
+                        dropped = True
+                    for n in range(max(1, lo), min(hi, self.page_count) + 1):
+                        valid.append(n - 1)
+                else:
+                    dropped = True
+            elif part.isdigit():
+                n = int(part)
+                if 1 <= n <= self.page_count:
+                    valid.append(n - 1)
+                else:
+                    dropped = True
+            else:
+                dropped = True
+        return sorted(set(valid)), dropped
+
+    def indices(self) -> list:
+        """0 基待删除页索引（去重升序）。"""
+        if self.scope.currentData() == "range":
+            return self._parse(self.pages.text())[0]
+        return [self.current_page]
+
+    @staticmethod
+    def _format_ranges(idxs: list) -> str:
+        """``[0,2,3,4,7]`` → ``"1, 3-5, 8"``（连续段合并，1 基）。"""
+        if not idxs:
+            return ""
+        parts: list = []
+        start = prev = idxs[0]
+        for i in idxs[1:]:
+            if i == prev + 1:
+                prev = i
+                continue
+            parts.append(str(start + 1) if start == prev else "%d-%d" % (start + 1, prev + 1))
+            start = prev = i
+        parts.append(str(start + 1) if start == prev else "%d-%d" % (start + 1, prev + 1))
+        return ", ".join(parts)
+
+    def _refresh(self) -> None:
+        idxs = self.indices()
+        dropped = (self._parse(self.pages.text())[1]
+                   if self.scope.currentData() == "range" else False)
+        if not idxs:
+            self.info.setText(tr("dlg.delete.summary_none"))
+            self.ok_btn.setEnabled(False)
+            return
+        if len(idxs) >= self.page_count:
+            self.info.setText(tr("dlg.delete.keep_one"))
+            self.ok_btn.setEnabled(False)
+            return
+        if len(idxs) == 1:
+            msg = tr("dlg.delete.summary_one", n=idxs[0] + 1)
+        else:
+            msg = tr("dlg.delete.summary", n=len(idxs), pages=self._format_ranges(idxs))
+        if dropped:
+            msg += "  " + tr("dlg.delete.ignored")
+        self.info.setText(msg)
+        self.ok_btn.setEnabled(True)
+
+
 class InsertPagesDialog(QDialog):
     def __init__(self, current_page: int, page_count: int, parent=None) -> None:
         super().__init__(parent)
