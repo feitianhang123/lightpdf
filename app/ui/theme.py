@@ -38,37 +38,50 @@ QPushButton {{ background: {BUTTON}; border: 1px solid {BORDER}; border-radius: 
 QPushButton:hover {{ background: {BUTTON_HOVER}; }}
 QPushButton:pressed {{ background: {ACCENT}; color: white; }}
 QPushButton:disabled {{ background: #DCEDC8; color: #8AA98C; border-color: #C5E1A5; }}
-/* --- 输入框：白底细边，保持"可打字"的观感 --- */
-QLineEdit, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {{
+/* --- 输入类控件：外框与高度完全统一 ---
+   单行输入框和下拉菜单共用同一套 1px 边框、圆角、内边距与高度，
+   同一表单里每一行都是 33px。下拉菜单只靠淡绿底 + 右侧箭头区
+   来区分，不再使用加粗外框或加粗文字。 */
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
     background: #FFFFFF; border: 1px solid {BORDER}; border-radius: 4px;
-    padding: 3px 6px; selection-background-color: {BUTTON};
+    padding: 3px 6px; min-height: 25px;
+    selection-background-color: {BUTTON};
+}}
+/* QSpinBox 的上下按钮会让 sizeHint 额外多算 3px，单独减掉即可对齐；
+   同时显式指定按钮尺寸，Qt 才会画出完整的上下小三角。 */
+QSpinBox, QDoubleSpinBox {{ min-height: 22px; }}
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {{
+    width: 16px; height: 12px;
+    background: {BUTTON}; border-left: 1px solid {BORDER};
+}}
+/* 多行文本框沿用同一套外框，但高度由内容决定 */
+QPlainTextEdit, QTextEdit {{
+    background: #FFFFFF; border: 1px solid {BORDER}; border-radius: 4px;
+    padding: 3px 6px; min-height: 25px;
+    selection-background-color: {BUTTON};
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+QComboBox:focus, QComboBox:on,
 QPlainTextEdit:focus, QTextEdit:focus {{ border: 1px solid {ACCENT}; }}
-QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled,
+QComboBox:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {{
     background: #EDF2ED; color: #8AA98C; border-color: #C5E1A5;
 }}
 
-/* --- 下拉菜单：淡绿底 + 粗绿边 + 右侧独立的箭头按钮区 ---
-   与输入框拉开明显差距，一眼就能认出"点这里会展开选项" --- */
+/* 下拉菜单：外框沿用上面的统一规则，仅改变底色、右内边距与文字色 */
 QComboBox {{
     background: {BG_ALT};
-    border: 2px solid {ACCENT};
-    border-radius: 5px;
-    padding: 4px 34px 4px 10px;
-    min-height: 22px;
+    padding-right: 26px;
     color: {ACCENT_DARK};
-    font-weight: 600;
-    selection-background-color: {BUTTON};
 }}
-QComboBox:hover {{ background: {BUTTON_HOVER}; border-color: {ACCENT_DARK}; }}
-QComboBox:focus, QComboBox:on {{ background: #FFFFFF; border-color: {ACCENT_DARK}; }}
-QComboBox:disabled {{ background: #EDF2ED; color: #8AA98C; border-color: #C5E1A5; }}
+QComboBox:hover {{ background: {BUTTON_HOVER}; }}
+QComboBox:focus, QComboBox:on {{ background: #FFFFFF; }}
 QComboBox::drop-down {{
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 28px;
-    border-left: 2px solid {ACCENT};
+    width: 22px;
+    border-left: 1px solid {BORDER};
     background: {BUTTON};
     border-top-right-radius: 3px;
     border-bottom-right-radius: 3px;
@@ -77,9 +90,9 @@ QComboBox::drop-down:hover {{ background: {BUTTON_HOVER}; }}
 QComboBox:on::drop-down {{ background: {BUTTON_HOVER}; border-left-color: {ACCENT_DARK}; }}
 QComboBox:disabled::drop-down {{ background: #DCEDC8; border-left-color: #C5E1A5; }}
 
-/* 展开后的选项列表也要统一成同一套绿色视觉 */
+/* 展开后的选项列表：与菜单同样用 1px 细边 */
 QComboBox QAbstractItemView {{
-    background: #FFFFFF; border: 2px solid {ACCENT}; border-radius: 4px;
+    background: #FFFFFF; border: 1px solid {BORDER}; border-radius: 4px;
     padding: 3px; outline: 0;
 }}
 QComboBox QAbstractItemView::item {{
@@ -87,10 +100,6 @@ QComboBox QAbstractItemView::item {{
 }}
 QComboBox QAbstractItemView::item:hover {{ background: {BG_ALT}; }}
 QComboBox QAbstractItemView::item:selected {{ background: {ACCENT}; color: #FFFFFF; }}
-
-/* 拆分方式是重点控件：更大更高，箭头区更宽 */
-QComboBox#splitMode {{ min-height: 30px; font-size: 14px; }}
-QComboBox#splitMode::drop-down {{ width: 34px; }}
 QListWidget, QTreeWidget, QListWidget#ResultsPanel {{
     background: {BG_ALT}; border: 1px solid {BORDER}; border-radius: 4px;
 }}
@@ -116,13 +125,13 @@ QCheckBox {{ spacing: 6px; }}
 """
 
 
-def _combo_arrow_rules() -> str:
+def _arrow_rules() -> str:
     """Draw real triangle arrows at runtime and return their QSS rules.
 
     Qt style sheets cannot build a triangle out of CSS borders (it renders a
-    solid square), so we paint a tiny PNG into the temp dir and point the
-    ``::down-arrow`` sub-control at it. Works both from source and from a
-    PyInstaller bundle — no external asset needs to be shipped.
+    solid square), so we paint tiny PNGs into the temp dir and point the
+    arrow sub-controls at them. Works both from source and from a PyInstaller
+    bundle — no external asset needs to be shipped.
     """
     import os
     import tempfile
@@ -130,14 +139,16 @@ def _combo_arrow_rules() -> str:
     from PySide6.QtCore import QPoint, Qt
     from PySide6.QtGui import QImage, QPainter, QPolygon
 
-    def draw(filename: str, color: str) -> str:
+    def draw(filename: str, color: str, up: bool = False) -> str:
         img = QImage(14, 14, QImage.Format_ARGB32)
         img.fill(Qt.transparent)
         painter = QPainter(img)
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(color))
-        painter.drawPolygon(QPolygon([QPoint(2, 5), QPoint(12, 5), QPoint(7, 10)]))
+        points = ([QPoint(2, 9), QPoint(12, 9), QPoint(7, 4)] if up else
+                  [QPoint(2, 5), QPoint(12, 5), QPoint(7, 10)])
+        painter.drawPolygon(QPolygon(points))
         painter.end()
         path = os.path.join(tempfile.gettempdir(), filename)
         if not img.save(path, "PNG"):
@@ -149,12 +160,24 @@ def _combo_arrow_rules() -> str:
     #    middle of the combo, so two arrows show up;
     #  * adding state-scoped rules (:on / :disabled) makes Qt paint *those*
     #    images in the middle too, even when the state does not match.
-    # So: exactly one plain rule, with a fixed size. Hover / open / disabled
-    # feedback is carried by the ::drop-down background instead.
-    normal = draw("lightpdf_combo_arrow.png", ACCENT_DARK)
-    if not normal:
-        return ""                         # still fine: the green arrow button remains
-    return 'QComboBox::down-arrow { image: url("%s"); width: 14px; height: 14px; }\n' % normal
+    # So every arrow gets exactly one plain rule with a fixed size. Hover /
+    # open / disabled feedback is carried by the button backgrounds instead.
+    rules: list[str] = []
+    pairs = (
+        ("lightpdf_combo_arrow.png", False,
+         'QComboBox::down-arrow { image: url("%s"); width: 14px; height: 14px; }'),
+        ("lightpdf_spin_up.png", True,
+         'QSpinBox::up-arrow, QDoubleSpinBox::up-arrow '
+         '{ image: url("%s"); width: 10px; height: 10px; }'),
+        ("lightpdf_spin_down.png", False,
+         'QSpinBox::down-arrow, QDoubleSpinBox::down-arrow '
+         '{ image: url("%s"); width: 10px; height: 10px; }'),
+    )
+    for filename, up, template in pairs:
+        path = draw(filename, ACCENT_DARK, up)
+        if path:
+            rules.append(template % path)
+    return "\n".join(rules) + ("\n" if rules else "")
 
 
 def apply_theme(app: QApplication) -> None:
@@ -168,4 +191,4 @@ def apply_theme(app: QApplication) -> None:
     pal.setColor(QPalette.Highlight, QColor(ACCENT))
     pal.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
     app.setPalette(pal)
-    app.setStyleSheet(QSS + "\n" + _combo_arrow_rules())
+    app.setStyleSheet(QSS + "\n" + _arrow_rules())
