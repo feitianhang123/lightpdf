@@ -37,23 +37,34 @@ v1.0.6 曾把下拉菜单做成「淡绿底 + 2px 粗绿框 + 加粗文字」，
 
 ## 下载
 
-| 系统 | 文件 |
-|---|---|
-| Windows（64 位） | `setup.exe` |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.8_arm64.deb` |
+到 [**Releases / v1.0.8**](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.8) 下载：
 
-> ⚠️ PyInstaller 不支持跨平台编译，麒麟安装包**必须在麒麟（aarch64）本机重新构建**：
-> `bash packaging/linux/build-kylin.sh`，产物 `dist/lightpdf_1.0.8_arm64.deb`。
-> 已发布的 `lightpdf_1.0.4_arm64.deb` 不含 v1.0.5 ~ v1.0.8 的改动。
-> 也可直接把工程根目录的 `lightpdf-linux-build-1.0.8.zip` 拷到麒麟解压后构建。
+| 系统 | 文件 | 大小 |
+|---|---|---|
+| Windows（64 位） | `setup.exe` | 89.8 MB |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.8_arm64.deb` | 64.1 MB |
+
+**Windows**：双击 `setup.exe` 按向导安装。**银河麒麟 / Debian 系（aarch64）**：
+
+```bash
+sudo dpkg -i lightpdf_1.0.8_arm64.deb
+sudo apt-get -f install     # 若提示缺依赖，自动补齐
+```
+
+> ℹ️ **v1.0.5 / v1.0.6 / v1.0.7 未单独发布**：这三个版本只在本地构建过，
+> 功能全部累积到本版一起发布。麒麟安装包已在麒麟（aarch64）本机构建完成，
+> 因此本版两个平台的安装包都包含 v1.0.5 ~ v1.0.8 的全部改动；
+> 早前的 `lightpdf_1.0.4_arm64.deb` 已不再推荐使用。
 
 ## 完整性校验
 
 | 文件 | 大小（字节） | SHA-256 |
 |---|---|---|
 | `setup.exe` | 94,163,414 | `a3e0a27a8b9224f42d4cf91ba28d03dd48558d54782a2b68747d5d0b8188254b` |
+| `lightpdf_1.0.8_arm64.deb` | 67,251,004 | `11f6886dd902531d985cac3fcb17eba6ada2b5e2f969991f1fd4fc910a904191` |
 
 - `setup.exe` — 产品版本 **1.0.8**（Windows 64 位）
+- `lightpdf_1.0.8_arm64.deb` — `Package: lightpdf` / `Version: 1.0.8` / `Architecture: arm64`（aarch64 ELF）
 
 ## 回归验证
 

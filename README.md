@@ -13,13 +13,13 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe` |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.4_arm64.deb` |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.8_arm64.deb` |
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.4_arm64.deb
+sudo dpkg -i lightpdf_1.0.8_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -60,7 +60,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.4_arm64.deb
+# 产物：dist/lightpdf_1.0.8_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -83,7 +83,9 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
     「拆分方式」不再单独放大，与其它下拉框保持一致。
   - 预览图已更新：[`07_拆分方式下拉菜单.png`](docs/preview/07_拆分方式下拉菜单.png)、
     [`08_输入框与下拉菜单对比.png`](docs/preview/08_输入框与下拉菜单对比.png)。
-- 麒麟 / Linux 安装包需在麒麟（aarch64）本机重新构建，产物 `lightpdf_1.0.8_arm64.deb`。
+- v1.0.5 / v1.0.6 / v1.0.7 未单独发布，改动全部累积到本版；两个平台的安装包（含麒麟
+  aarch64 的 `lightpdf_1.0.8_arm64.deb`）已同步发布到
+  [v1.0.8 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.8)。
 
 ### 1.0.7
 
