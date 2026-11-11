@@ -105,8 +105,9 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
   - 效果图：[`docs/preview/09_骑缝章设置.png`](docs/preview/09_骑缝章设置.png)、
     [`docs/preview/10_骑缝章落位效果.png`](docs/preview/10_骑缝章落位效果.png)、
     [`docs/preview/11_图片图章设置.png`](docs/preview/11_图片图章设置.png)。
-- 麒麟 / Linux 安装包需在麒麟（aarch64）本机重新构建，产物 `lightpdf_1.0.7_arm64.deb`；
-  已发布的 `lightpdf_1.0.4_arm64.deb` 不含 v1.0.5 ~ v1.0.7 的改动。
+- 麒麟 / Linux 安装包需在麒麟（aarch64）本机重新构建，本版当时未单独发布；
+  v1.0.5 ~ v1.0.7 的改动已随 [v1.0.8 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.8)
+  的 `lightpdf_1.0.8_arm64.deb` 一并发布。
 
 ### 1.0.6
 
