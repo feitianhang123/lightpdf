@@ -144,6 +144,44 @@ def insert_stamp_image(doc: PdfDocument, page_index: int, rect: fitz.Rect,
     doc.mark_dirty()
 
 
+def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
+                        side: str = "alternate", vpos: str = "middle",
+                        margin: float = 12.0, vpercent: float = 0.5) -> None:
+    """Place one vertical slice of a seal on the edge of each page (骑缝章).
+
+    ``assignments`` items are ``(page_index, png_bytes, width_pt, height_pt,
+    slot_index)``.  ``slot_index`` is the position within one seal group and
+    drives the odd/even side for double-sided printing when ``side`` is
+    ``"alternate"``: slice 0 goes to the right edge of page 1, slice 1 to the
+    left edge of page 2, etc.  Stacking the sheets then reassembles the seal.
+    """
+    for page_index, data, sw, sh, slot in assignments:
+        page = doc.page(page_index)
+        pr = page.rect
+        right = (slot % 2 == 0) if side == "alternate" else (side == "right")
+        x0 = (pr.width - margin - sw) if right else margin
+        avail = max(0.0, pr.height - sh)
+        if vpos == "top":
+            y0 = margin
+        elif vpos == "bottom":
+            y0 = max(0.0, avail - margin)
+        elif vpos == "custom":
+            y0 = avail * max(0.0, min(1.0, float(vpercent)))
+        else:
+            y0 = avail / 2.0
+        rect = fitz.Rect(x0, y0, x0 + sw, y0 + sh)
+        # PyMuPDF places images in *unrotated* page coordinates while
+        # ``page.rect`` is the visible (rotated) rectangle.  For landscape
+        # pages (/Rotate 90/180/270) map the visible rect back and pre-rotate
+        # the slice by the same angle, otherwise it lands outside the sheet.
+        rot = page.rotation or 0
+        if rot:
+            rect = rect * page.derotation_matrix
+        page.insert_image(rect, stream=bytes(data), keep_proportion=False,
+                          overlay=True, rotate=rot)
+    doc.mark_dirty()
+
+
 # ------------------------------------------------------------------ inspect
 def list_annotations(doc: PdfDocument, page_index: int) -> List[dict]:
     page = doc.page(page_index)

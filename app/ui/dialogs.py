@@ -1,10 +1,12 @@
 """Application dialogs (localized)."""
 from __future__ import annotations
 
+import os
+
 import fitz
 from PySide6.QtCore import QEvent, QRectF, Qt
-from PySide6.QtGui import (QColor, QImage, QPageLayout, QPageSize, QPainter,
-                          QPixmap, QTransform)
+from PySide6.QtGui import (QColor, QFont, QImage, QPageLayout, QPageSize,
+                          QPainter, QPen, QPixmap, QTransform)
 from PySide6.QtPrintSupport import QPrinter, QPrinterInfo
 from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
                                QColorDialog, QComboBox,
@@ -1845,12 +1847,16 @@ class StampSettingsDialog(QDialog):
                 self.font.addItem(label, label)
         except Exception:  # noqa: BLE001
             pass
+        fi = self.font.findData(self.cfg.get("font", "helv"))
+        self.font.setCurrentIndex(fi if fi >= 0 else 0)
         self.size = QSpinBox(); self.size.setRange(6, 300)
         self.size.setValue(int(self.cfg.get("size", 24)))
         self.shape = QComboBox()
         for key, lab in (("rect", "shape.rect"), ("round", "shape.round"),
                          ("ellipse", "shape.ellipse"), ("none", "shape.none")):
             self.shape.addItem(tr(lab), key)
+        si = self.shape.findData(self.cfg.get("shape", "round"))
+        self.shape.setCurrentIndex(si if si >= 0 else 0)
         self.border_w = QSpinBox(); self.border_w.setRange(0, 40)
         self.border_w.setValue(int(self.cfg.get("border_width", 3)))
         self.padding = QSpinBox(); self.padding.setRange(0, 120)
@@ -1858,10 +1864,13 @@ class StampSettingsDialog(QDialog):
         self.transparent = QCheckBox(tr("dlg.stamp.transparent"))
         self.transparent.setChecked(bool(self.cfg.get("transparent", True)))
 
-        # image fields
+        # image fields — always usable; picking a file switches the type to
+        # "image" automatically (previously users picked a PNG while the type
+        # combo still said "text stamp", so nothing changed in the preview).
         self.image = QLineEdit(self.cfg.get("image", ""))
-        choose = QPushButton(tr("dlg.stamp.choose"))
-        choose.clicked.connect(self._choose_image)
+        self.image.setToolTip(tr("dlg.stamp.imported", name=""))
+        self.choose = QPushButton(tr("dlg.stamp.choose"))
+        self.choose.clicked.connect(self._choose_image)
         self.image_w = QSpinBox(); self.image_w.setRange(20, 2000)
         self.image_w.setValue(int(self.cfg.get("image_width", 160)))
 
@@ -1887,13 +1896,15 @@ class StampSettingsDialog(QDialog):
         form.addRow(tr("dlg.stamp.fill"), self.btn_fill)
         form.addRow("", self.transparent)
         img_row = QWidget(); il = QHBoxLayout(img_row); il.setContentsMargins(0, 0, 0, 0)
-        il.addWidget(self.image); il.addWidget(choose)
+        il.addWidget(self.image); il.addWidget(self.choose)
         form.addRow(tr("dlg.stamp.image"), img_row)
+        form.addRow("", QLabel(tr("dlg.stamp.image_hint")))
         form.addRow(tr("dlg.stamp.width"), self.image_w)
 
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
+        self._ok_button = bb.button(QDialogButtonBox.Ok)
 
         lay = QVBoxLayout(self)
         lay.addLayout(form)
@@ -1908,7 +1919,7 @@ class StampSettingsDialog(QDialog):
             w.valueChanged.connect(self._refresh)
         self.text.textChanged.connect(self._refresh)
         self.transparent.toggled.connect(self._refresh)
-        self.image.textChanged.connect(self._refresh)
+        self.image.textChanged.connect(self._on_image_text_changed)
         self._sync()
 
     def _color_button(self, key: str, initial: str):
@@ -1932,16 +1943,36 @@ class StampSettingsDialog(QDialog):
     def _choose_image(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("dlg.stamp.image"), "",
                                               "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp)")
-        if path:
-            self.image.setText(path)
+        if not path:
+            return
+        try:
+            # keep a private copy: the config must survive the original file
+            # being moved or deleted later on.
+            dest = self.stamps.import_image(path)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, tr("msg.failed"), str(exc))
+            return
+        self.image.setText(dest)
+        self.image.setToolTip(tr("dlg.stamp.imported", name=os.path.basename(path)))
+        if self.mode.currentData() != "image":
+            self.mode.setCurrentIndex(1)   # -> _sync -> _refresh
+        else:
+            self._refresh()
+
+    def _on_image_text_changed(self, text: str) -> None:
+        """A manually pasted image path also switches to image mode."""
+        t = text.strip()
+        if t and os.path.isfile(t) and self.mode.currentData() == "text":
+            self.mode.setCurrentIndex(1)
+            return
+        self._refresh()
 
     def _sync(self) -> None:
         text_mode = self.mode.currentData() == "text"
         for w in (self.text, self.font, self.size, self.shape, self.border_w,
                   self.padding, self.transparent, self.btn_text_color):
             w.setEnabled(text_mode)
-        for w in (self.image, self.image_w):
-            w.setEnabled(not text_mode)
+        # image controls stay usable in both modes on purpose
         self._refresh()
 
     def _collect(self) -> dict:
@@ -1963,13 +1994,15 @@ class StampSettingsDialog(QDialog):
 
     def _refresh(self) -> None:
         try:
-            res = self.stamps.render_stamp(self._collect())
-        except Exception:  # noqa: BLE001
-            res = None
-        if not res:
-            self.preview.setText("—")
+            png, w, h = self.stamps.render_stamp(self._collect())
+        except Exception as exc:  # noqa: BLE001
+            # QLabel keeps showing the old pixmap unless it is cleared first.
+            self.preview.clear()
+            self.preview.setText(str(exc))
+            self._ok_button.setEnabled(False)
             return
-        png, w, h = res
+        self._ok_button.setEnabled(True)
+        self.preview.setText("")
         pix = QPixmap()
         pix.loadFromData(png, "PNG")
         self.preview.setPixmap(pix.scaled(max(50, self.preview.width() - 8),
@@ -1978,3 +2011,288 @@ class StampSettingsDialog(QDialog):
 
     def config(self) -> dict:
         return self._collect()
+
+
+class RidingStampDialog(QDialog):
+    """骑缝章 / 跨页章：把一枚图章切成 N 片，依次贴在多页的页边。
+
+    Stacking the printed sheets reassembles one complete seal.  For duplex
+    printing odd slices go to the right edge and even slices to the left edge.
+    """
+
+    def __init__(self, page_count: int, current_page: int, parent=None) -> None:
+        super().__init__(parent)
+        from . import stamps
+        self.stamps = stamps
+        self.cfg = stamps.load_config()
+        self.n = max(1, int(page_count))
+        self.cur = min(max(0, int(current_page)), self.n - 1)
+        self.setWindowTitle(tr("dlg.riding.title"))
+        self.resize(660, 780)
+
+        # ---------------------------------------------------------- source
+        self.source = QComboBox()
+        self.source.addItem(tr("dlg.riding.use_config"), "config")
+        self.source.addItem(tr("dlg.riding.use_file"), "file")
+        self.image = QLineEdit()
+        self.image.setReadOnly(True)
+        self.image.setPlaceholderText(tr("dlg.riding.no_file"))
+        self.choose = QPushButton(tr("dlg.stamp.choose"))
+        self.choose.clicked.connect(self._choose_image)
+        self.settings_btn = QPushButton(tr("annot.stamp_settings"))
+        self.settings_btn.clicked.connect(self._open_settings)
+        src_row = QWidget()
+        sl = QHBoxLayout(src_row); sl.setContentsMargins(0, 0, 0, 0)
+        sl.addWidget(self.image, 1); sl.addWidget(self.choose); sl.addWidget(self.settings_btn)
+
+        # ----------------------------------------------------------- pages
+        self.scope = QComboBox()
+        self.scope.addItem(tr("scope.all"), "all")
+        self.scope.addItem(tr("dlg.riding.from_current"), "from_current")
+        self.scope.addItem(tr("dlg.riding.range"), "range")
+        self.pages = QLineEdit("1-%d" % self.n)
+        self.pages.setPlaceholderText("1-3,5,8-10")
+        self.group = QSpinBox()
+        self.group.setRange(0, self.n)
+        self.group.setValue(0)
+        self.group.setSpecialValueText(tr("dlg.riding.group_auto"))
+
+        # ---------------------------------------------------------- layout
+        self.side = QComboBox()
+        self.side.addItem(tr("dlg.riding.side_alternate"), "alternate")
+        self.side.addItem(tr("dlg.riding.side_right"), "right")
+        self.side.addItem(tr("dlg.riding.side_left"), "left")
+        self.vpos = QComboBox()
+        self.vpos.addItem(tr("dlg.riding.v_middle"), "middle")
+        self.vpos.addItem(tr("dlg.riding.v_top"), "top")
+        self.vpos.addItem(tr("dlg.riding.v_bottom"), "bottom")
+        self.vpos.addItem(tr("dlg.riding.v_custom"), "custom")
+        self.vpercent = QSpinBox()
+        self.vpercent.setRange(0, 100); self.vpercent.setValue(50)
+        self.vpercent.setSuffix(" %")
+        self.stamp_w = QSpinBox()
+        self.stamp_w.setRange(40, 600); self.stamp_w.setValue(120)
+        self.stamp_w.setSuffix(" pt")
+        self.margin = QSpinBox()
+        self.margin.setRange(0, 120); self.margin.setValue(12)
+        self.margin.setSuffix(" pt")
+        self.overlap = QSpinBox()
+        self.overlap.setRange(0, 30); self.overlap.setValue(0)
+        self.overlap.setSuffix(" %")
+        self.reverse = QCheckBox(tr("dlg.riding.reverse"))
+
+        # ---------------------------------------------------------- preview
+        self.preview = QLabel()
+        self.preview.setAlignment(Qt.AlignCenter)
+        self.preview.setMinimumHeight(270)
+        self.preview.setStyleSheet("background:#FFFFFF;border:1px solid #4E7D57;")
+        self.info = QLabel()
+        self.info.setWordWrap(True)
+        self.hint = QLabel(tr("dlg.riding.hint"))
+        self.hint.setWordWrap(True)
+
+        form = QFormLayout()
+        form.addRow(tr("dlg.riding.source"), self.source)
+        form.addRow(tr("dlg.stamp.image"), src_row)
+        form.addRow(tr("dlg.riding.scope"), self.scope)
+        form.addRow(tr("dlg.rotate.pages"), self.pages)
+        form.addRow(tr("dlg.riding.group"), self.group)
+        form.addRow(tr("dlg.riding.side"), self.side)
+        form.addRow(tr("dlg.riding.vpos"), self.vpos)
+        form.addRow(tr("dlg.riding.vpercent"), self.vpercent)
+        form.addRow(tr("dlg.riding.width"), self.stamp_w)
+        form.addRow(tr("dlg.riding.margin"), self.margin)
+        form.addRow(tr("dlg.riding.overlap"), self.overlap)
+        form.addRow("", self.reverse)
+
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.accept); bb.rejected.connect(self.reject)
+        self._ok = bb.button(QDialogButtonBox.Ok)
+
+        lay = QVBoxLayout(self)
+        lay.addLayout(form)
+        lay.addWidget(QLabel(tr("dlg.stamp.preview")))
+        lay.addWidget(self.preview, 1)
+        lay.addWidget(self.info)
+        lay.addWidget(self.hint)
+        lay.addWidget(bb)
+
+        self.source.currentIndexChanged.connect(self._sync)
+        self.scope.currentIndexChanged.connect(self._sync)
+        self.vpos.currentIndexChanged.connect(self._sync)
+        for w in (self.side,):
+            w.currentIndexChanged.connect(self._refresh)
+        for w in (self.pages,):
+            w.textChanged.connect(self._refresh)
+        for w in (self.group, self.stamp_w, self.margin, self.overlap, self.vpercent):
+            w.valueChanged.connect(self._refresh)
+        self.reverse.toggled.connect(self._refresh)
+        self._sync()
+
+    # ------------------------------------------------------------- helpers
+    def _sync(self) -> None:
+        self.choose.setEnabled(self.source.currentData() == "file")
+        self.pages.setEnabled(self.scope.currentData() == "range")
+        self.vpercent.setEnabled(self.vpos.currentData() == "custom")
+        self._refresh()
+
+    def _choose_image(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, tr("dlg.stamp.image"), "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp)")
+        if not path:
+            return
+        try:
+            dest = self.stamps.import_image(path)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, tr("msg.failed"), str(exc)); return
+        self.image.setText(dest)
+        self.image.setToolTip(tr("dlg.stamp.imported", name=os.path.basename(path)))
+        self._refresh()
+
+    def _open_settings(self) -> None:
+        dlg = StampSettingsDialog(self)
+        if dlg.exec():
+            self.stamps.save_config(dlg.config())
+            self.cfg = self.stamps.load_config()
+            self._refresh()
+
+    def page_indices(self) -> list:
+        s = self.scope.currentData()
+        if s == "all":
+            return list(range(self.n))
+        if s == "from_current":
+            return list(range(self.cur, self.n))
+        import re
+        out: list = []
+        for part in re.split(r"[,，;；\s]+", self.pages.text().strip()):
+            if not part:
+                continue
+            m = re.match(r"^(\d+)\s*-\s*(\d+)$", part)
+            if m:
+                a, b = int(m.group(1)), int(m.group(2))
+                if a > b:
+                    a, b = b, a
+                out += list(range(a, b + 1))
+            elif part.isdigit():
+                out.append(int(part))
+        return sorted({p - 1 for p in out if 1 <= p <= self.n})
+
+    def stamp_config(self) -> dict:
+        cfg = dict(self.cfg)
+        if self.source.currentData() == "file":
+            path = self.image.text().strip()
+            if not path:
+                raise self.stamps.StampImageError(tr("dlg.riding.no_file"))
+            cfg["mode"] = "image"
+            cfg["image"] = path
+        cfg["image_width"] = self.stamp_w.value()
+        return cfg
+
+    def group_size(self, n: int) -> int:
+        g = self.group.value() or n
+        return max(1, min(g, n))
+
+    def build_assignments(self):
+        """Return ``(pages, [(page_index, png, w_pt, h_pt, slot), ...])``."""
+        pages = self.page_indices()
+        if not pages:
+            raise ValueError(tr("dlg.riding.no_pages"))
+        cfg = self.stamp_config()
+        g = self.group_size(len(pages))
+        ov = self.overlap.value() / 100.0
+        rev = self.reverse.isChecked()
+        cache: dict = {}
+        out = []
+        for start in range(0, len(pages), g):
+            chunk = pages[start:start + g]
+            k = len(chunk)
+            if k not in cache:
+                cache[k] = self.stamps.render_stamp_slices(
+                    cfg, k, ov, float(self.stamp_w.value()))
+            slices = list(cache[k])
+            if rev:
+                slices.reverse()
+            for slot, pi in enumerate(chunk):
+                png, sw, sh = slices[slot]
+                out.append((pi, png, sw, sh, slot))
+        return pages, out
+
+    def options(self) -> dict:
+        return {"side": self.side.currentData(),
+                "vpos": self.vpos.currentData(),
+                "margin": float(self.margin.value()),
+                "vpercent": self.vpercent.value() / 100.0}
+
+    # ------------------------------------------------------------- preview
+    def _refresh(self) -> None:
+        try:
+            pages, assignments = self.build_assignments()
+        except Exception as exc:  # noqa: BLE001
+            self.preview.clear()
+            self.preview.setText(str(exc))
+            self.info.setText("")
+            self._ok.setEnabled(False)
+            return
+        self._ok.setEnabled(True)
+        g = self.group_size(len(pages))
+        first = assignments[:g]
+        total_pt = sum(a[2] for a in first)
+        h_pt = first[0][3]
+        zoom = min(2.2, 440.0 / max(1.0, total_pt), 165.0 / max(1.0, h_pt))
+        w_px = max(160, int(total_pt * zoom) + 20)
+        h_px = max(60, int(h_pt * zoom) + 20)
+        rows = min(len(pages), 14)
+        canvas = QImage(w_px, h_px + 112, QImage.Format_ARGB32)
+        canvas.fill(QColor("#FFFFFF"))
+        p = QPainter(canvas)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        # top: slices laid side by side -> the reassembled seal
+        x = 10.0
+        dash = QPen(QColor("#8FB69A")); dash.setStyle(Qt.DashLine)
+        for _pi, png, sw, sh, _slot in first:
+            im = QImage.fromData(png, "PNG")
+            w = sw * zoom
+            p.drawImage(QRectF(x, 10, w, h_pt * zoom), im)
+            p.setPen(dash)
+            p.drawLine(int(x + w), 10, int(x + w), 10 + int(h_pt * zoom))
+            x += w
+        # bottom: little page thumbnails showing where each slice lands
+        base_y = h_px + 16
+        ph = 68
+        gap = 6
+        pw = max(14, min(46, (w_px - 20) // max(1, rows) - gap))
+        side = self.side.currentData()
+        vpos = self.vpos.currentData()
+        vp = self.vpercent.value() / 100.0
+        font = QFont(); font.setPointSize(7)
+        p.setFont(font)
+        for k in range(rows):
+            px = 10 + k * (pw + gap)
+            p.setPen(QPen(QColor("#B9CDBB")))
+            p.fillRect(QRectF(px, base_y, pw, ph), QColor("#FBFCFA"))
+            p.drawRect(QRectF(px, base_y, pw, ph))
+            right = (k % 2 == 0) if side == "alternate" else (side == "right")
+            sw_pt = first[k % g][2]
+            strip_w = max(2, min(pw - 4, int(sw_pt * pw / 595.0 * 2.0)))
+            sx = (px + pw - strip_w - 2) if right else (px + 2)
+            strip_h = max(10, min(ph - 4, int(h_pt * ph / 842.0)))
+            avail = ph - strip_h
+            if vpos == "top":
+                sy = base_y + 2
+            elif vpos == "bottom":
+                sy = base_y + max(0, avail - 2)
+            elif vpos == "custom":
+                sy = base_y + avail * vp
+            else:
+                sy = base_y + avail / 2
+            p.setPen(Qt.NoPen)
+            p.fillRect(QRectF(sx, sy, strip_w, strip_h), QColor("#C00000"))
+            p.setPen(QColor("#4E7D57"))
+            p.drawText(int(px), base_y + ph + 12, str(pages[k] + 1))
+        p.end()
+        self.preview.setText("")
+        self.preview.setPixmap(QPixmap.fromImage(canvas))
+        self.info.setText(tr("dlg.riding.info", n=len(pages), g=g,
+                             w=round(first[0][2], 1), h=round(h_pt, 1),
+                             groups=(len(pages) + g - 1) // g))

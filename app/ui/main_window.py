@@ -30,8 +30,8 @@ from .dialogs import (CompareWindow, DeletePagesDialog, HeaderFooterDialog,
                       ImagesToPdfDialog,
                       InsertPagesDialog, MarkupStyleDialog, MergeDialog,
                       PageNumbersDialog, PrintDialog, PropertiesDialog,
-                      RotateDialog, SplitDialog, StampSettingsDialog,
-                      TextEditDialog, WatermarkDialog)
+                      RidingStampDialog, RotateDialog, SplitDialog,
+                      StampSettingsDialog, TextEditDialog, WatermarkDialog)
 from .document_tab import DocumentTab
 from .icons import icon
 from .panels import LeftDock, ResultsPanel
@@ -230,6 +230,7 @@ class MainWindow(QMainWindow):
         mk("annot.pen_color", self.pick_pen_color, "ink")
         mk("annot.list", self.list_annotations, "note")
         mk("annot.stamp_settings", self.do_stamp_settings, "stamp")
+        mk("annot.riding_stamp", self.do_riding_stamp, "stamp")
 
         mk("pages.insert", self.do_insert_pages, "open")
         mk("pages.delete", self.do_delete_page, "close")
@@ -308,7 +309,7 @@ class MainWindow(QMainWindow):
             ma.addAction(self._tool_actions[name])
         ma.addSeparator()
         for k in ("annot.markup_color", "annot.pen_color", "annot.stamp_settings",
-                  "annot.list"):
+                  "annot.riding_stamp", "annot.list"):
             ma.addAction(self._actions[k])
 
         self._menus["menu.pages"] = m.addMenu("")
@@ -678,13 +679,12 @@ class MainWindow(QMainWindow):
         if tab is not self._cur_tab():
             return
         try:
-            res = stamps.render_stamp(stamps.load_config())
-        except Exception:  # noqa: BLE001
-            res = None
-        if not res:
+            png, w, h = stamps.render_stamp(stamps.load_config())
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, tr("msg.failed"),
+                                tr("msg.stamp_invalid", reason=str(exc)))
             self.do_stamp_settings()
             return
-        png, w, h = res
         pt = tab.view.page_to_pdf_point(index, dp)
         rect = fitz.Rect(pt.x, pt.y, pt.x + w, pt.y + h)
         tab.push_undo()
@@ -696,6 +696,28 @@ class MainWindow(QMainWindow):
         self.left.thumbnails.refresh_page(tab.doc, index)
         self._update_title()
         self._update_undo_redo()
+
+    def do_riding_stamp(self) -> None:
+        """批注 → 插入骑缝章：把一枚章切成 N 片分别贴到多页页边。"""
+        tab = self._require_tab()
+        if not tab:
+            return
+        dlg = RidingStampDialog(tab.doc.page_count, tab.view.current_page(), self)
+        if not dlg.exec():
+            return
+        try:
+            pages, assignments = dlg.build_assignments()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, tr("msg.failed"), str(exc)); return
+        tab.push_undo()                       # one Undo reverts every slice
+        try:
+            annot.insert_riding_stamp(tab.doc, assignments, **dlg.options())
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
+        for i in pages:
+            tab.view.invalidate_page(i)
+        self._refresh_tab(tab)
+        self.statusBar().showMessage(tr("msg.riding_done", n=len(pages)), 6000)
 
     # --------------------------------------------------------------- editing
     def _on_span_picked(self, span, tab: DocumentTab) -> None:
