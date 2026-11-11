@@ -93,6 +93,8 @@ class SplitDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("dlg.split.title"))
         self.mode = QComboBox()
+        self.mode.setObjectName("splitMode")          # 主题里给它更醒目的下拉样式
+        self.mode.setToolTip(tr("dlg.split.mode_tip"))
         self.mode.addItem(tr("split.equal"), "equal")
         self.mode.addItem(tr("split.ranges"), "ranges")
         self.mode.currentIndexChanged.connect(self._sync)

@@ -212,6 +212,9 @@ STRINGS: dict[str, dict[str, str]] = {
     "dlg.split.title": {"zh": "拆分文档", "en": "Split Document"},
     "dlg.split.every": {"zh": "每个文件页数 (1..{n})", "en": "Pages per file (1..{n})"},
     "dlg.split.mode": {"zh": "拆分方式", "en": "Split by"},
+    "dlg.split.mode_tip": {
+        "zh": "点击右侧箭头展开下拉菜单，选择拆分方式",
+        "en": "Click the arrow to open the drop-down list and pick a split mode"},
     "split.equal": {"zh": "按页数均分", "en": "Equal pages"},
     "split.ranges": {"zh": "自定义范围", "en": "Custom ranges"},
     "dlg.split.ranges": {"zh": "范围（如 1-3,4-8,9）", "en": "Ranges (e.g. 1-3,4-8,9)"},
