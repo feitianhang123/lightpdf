@@ -206,6 +206,9 @@ def render_stamp(cfg: dict) -> Tuple[bytes, float, float]:
     return render_text_stamp(cfg)
 
 
+_SLICE_CACHE: dict = {}
+
+
 def render_stamp_slices(cfg: dict, count: int, overlap: float = 0.0,
                         target_width: Optional[float] = None
                         ) -> List[Tuple[bytes, float, float]]:
@@ -213,8 +216,14 @@ def render_stamp_slices(cfg: dict, count: int, overlap: float = 0.0,
 
     ``overlap`` (0..0.4) widens every slice slightly so that binding/cutting
     does not break the seal.  ``target_width`` rescales the whole stamp first,
-    which makes the dialog's width slider work for text stamps too.
+    which makes the dialog's width slider work for text stamps too.  Results
+    are cached so live-previewing a 100-page document stays responsive.
     """
+    key = (json.dumps(cfg, sort_keys=True, ensure_ascii=False), int(count),
+           float(overlap), float(target_width or 0))
+    hit = _SLICE_CACHE.get(key)
+    if hit is not None:
+        return hit
     png, _w, _h = render_stamp(cfg)
     src = QImage.fromData(png, "PNG")
     if src.isNull():
@@ -237,4 +246,7 @@ def render_stamp_slices(cfg: dict, count: int, overlap: float = 0.0,
         piece = src.copy(int(round(x0)), 0,
                          max(1, int(round(x1 - x0))), int(full_h))
         out.append((_png(piece), (x1 - x0) / SS, full_h / SS))
+    if len(_SLICE_CACHE) > 16:
+        _SLICE_CACHE.clear()
+    _SLICE_CACHE[key] = out
     return out
