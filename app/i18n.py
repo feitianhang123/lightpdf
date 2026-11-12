@@ -209,6 +209,38 @@ STRINGS: dict[str, dict[str, str]] = {
         "zh": "当前图章无法使用：{reason}\n请在「图章设置」中重新选择。",
         "en": "The current stamp cannot be used: {reason}\nPlease fix it in Stamp Settings.",
     },
+
+    # editable image / stamp objects (size & position)
+    "act.object_props": {"zh": "调整图片 / 印章...", "en": "Size && Position..."},
+    "dlg.object.title": {"zh": "调整大小与位置", "en": "Size & Position"},
+    "dlg.object.x": {"zh": "水平位置 X (pt)", "en": "Left X (pt)"},
+    "dlg.object.y": {"zh": "垂直位置 Y (pt)", "en": "Top Y (pt)"},
+    "dlg.object.width": {"zh": "宽度 (pt)", "en": "Width (pt)"},
+    "dlg.object.height": {"zh": "高度 (pt)", "en": "Height (pt)"},
+    "dlg.object.aspect": {"zh": "锁定宽高比", "en": "Lock aspect ratio"},
+    "dlg.object.delete": {"zh": "删除此对象", "en": "Delete this object"},
+    "dlg.object.hint": {
+        "zh": "也可直接在页面上操作：拖动移动、拖动八个控制点缩放（按住 Shift 自由缩放）、方向键微调（Shift 加速）、Delete 删除。",
+        "en": "On the page: drag to move, drag any of the eight handles to resize (hold Shift for free resize), arrow keys to nudge (Shift for bigger steps), Delete to remove.",
+    },
+    "dlg.object.kind_image": {"zh": "图片", "en": "image"},
+    "dlg.object.kind_stamp": {"zh": "图章", "en": "stamp"},
+    "msg.object_inserted": {
+        "zh": "已插入{kind}：拖动可移动，拖动蓝色控制点可缩放，双击可精确调整；保存时写入 PDF。",
+        "en": "{kind} added: drag to move, drag the blue handles to resize, double-click for exact values. It is written into the PDF on save.",
+    },
+    "msg.object_selected": {
+        "zh": "已选中页面上的图片 / 印章，现在可拖动调整位置或双击调整大小。",
+        "en": "Selected an embedded image / stamp. Drag to reposition or double-click to resize.",
+    },
+    "msg.object_none": {
+        "zh": "请先在页面上单击选中一个图片或图章（出现蓝色控制点）后再使用此命令。",
+        "en": "Click an image or stamp on the page first (blue handles appear), then use this command.",
+    },
+    "status.object_tip": {
+        "zh": "拖动移动 · 控制点缩放 · 双击精确调整 · Delete 删除",
+        "en": "Drag to move · handles to resize · double-click for exact values · Delete to remove",
+    },
     "dlg.markup.title": {"zh": "标记样式", "en": "Markup Style"},
     "dlg.markup.color": {"zh": "颜色", "en": "Color"},
     "dlg.markup.opacity": {"zh": "不透明度 (%)", "en": "Opacity (%)"},

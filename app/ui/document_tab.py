@@ -32,14 +32,19 @@ class DocumentTab(QWidget):
         return "Untitled"
 
     # ------------------------------------------------------- undo / redo
+    # A snapshot is (document bytes, editable overlay state).  Overlays are
+    # deliberately not stored inside the PDF, so undo/redo must restore both.
+    def _snapshot(self):
+        return (self.doc.tobytes(), self.view.overlay_snapshot())
+
     def push_undo(self) -> None:
         if not self.doc.is_open:
             return
         try:
-            data = self.doc.tobytes()
+            snap = self._snapshot()
         except Exception:  # noqa: BLE001
             return
-        self.undo_stack.append(data)
+        self.undo_stack.append(snap)
         if len(self.undo_stack) > MAX_HISTORY:
             self.undo_stack.pop(0)
         self.redo_stack.clear()
@@ -54,20 +59,22 @@ class DocumentTab(QWidget):
         if not self.undo_stack:
             return False
         try:
-            current = self.doc.tobytes()
+            current = self._snapshot()
         except Exception:  # noqa: BLE001
             current = None
-        data = self.undo_stack.pop()
+        data, overlays = self.undo_stack.pop()
         if current is not None:
             self.redo_stack.append(current)
         self.doc.restore_bytes(data)
+        self.view.set_overlays(overlays)
         return True
 
     def redo(self) -> bool:
         if not self.redo_stack:
             return False
-        current = self.doc.tobytes()
-        data = self.redo_stack.pop()
+        current = self._snapshot()
+        data, overlays = self.redo_stack.pop()
         self.undo_stack.append(current)
         self.doc.restore_bytes(data)
+        self.view.set_overlays(overlays)
         return True

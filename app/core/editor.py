@@ -204,14 +204,108 @@ def image_source_bytes(source) -> bytes:
 
 
 def insert_image_bytes(doc: PdfDocument, page_index: int, rect: fitz.Rect, source,
-                       keep_aspect: bool = False) -> None:
+                       keep_aspect: bool = False, rotate: int = 0) -> None:
     page = doc.page(page_index)
     try:
         page.insert_image(fitz.Rect(rect), stream=image_source_bytes(source),
-                          keep_proportion=keep_aspect)
+                          keep_proportion=keep_aspect, rotate=rotate)
     except Exception as exc:  # noqa: BLE001
         raise PdfError(f"Image insert failed: {exc}") from exc
     doc.mark_dirty()
+
+
+# --------------------------------------------------- editable image objects
+def _image_rotation(transform) -> int:
+    """Recover the ``rotate`` value used by insert_image from an image transform.
+
+    The transform maps the unit square onto the image quad; its first column
+    (a, b) is the image's width vector in unrotated PDF space.
+    """
+    if not transform or len(transform) < 6:
+        return 0
+    a, b = float(transform[0]), float(transform[1])
+    if abs(a) >= abs(b):
+        return 0 if a >= 0 else 180
+    return 270 if b > 0 else 90
+
+
+def list_image_objects(doc: PdfDocument, page_index: int) -> List[dict]:
+    """List drawable image instances on a page (one entry per placement).
+
+    ``delete_image`` leaves a transparent 1x1 dummy image behind; those are
+    filtered out, as are page-sized background scans which should not be
+    pickable as editable objects.
+    """
+    page = doc.page(page_index)
+    area = max(1.0, page.rect.width * page.rect.height)
+    out = []
+    for info in page.get_image_info(xrefs=True):
+        xref = int(info.get("xref") or 0)
+        if xref <= 0 or int(info.get("width") or 0) < 4 or int(info.get("height") or 0) < 4:
+            continue                        # dummy / inline / inline-sized image
+        bbox = fitz.Rect(info["bbox"])
+        if bbox.is_empty or bbox.width < 2 or bbox.height < 2:
+            continue
+        if bbox.get_area() > area * 0.92:   # full-page background picture
+            continue
+        out.append({"xref": xref, "bbox": bbox,
+                    "rotate": _image_rotation(info.get("transform")),
+                    "width": int(info["width"]), "height": int(info["height"])})
+    return out
+
+
+def image_object_bytes(doc: PdfDocument, xref: int) -> bytes:
+    """Extract an embedded image as PNG, recombining its soft mask (alpha)."""
+    owner = doc.doc
+    if owner is None:
+        raise PdfError("No document open.")
+    try:
+        pix = fitz.Pixmap(owner, xref)
+        if pix.colorspace is None or pix.colorspace.n > 3:
+            pix = fitz.Pixmap(fitz.csRGB, pix)
+        key = owner.xref_get_key(xref, "SMask")
+        if key and key[0] == "xref":
+            smask_xref = int(str(key[1]).split()[0])
+            smask = fitz.Pixmap(owner, smask_xref)
+            if smask.width == pix.width and smask.height == pix.height:
+                pix = fitz.Pixmap(pix, smask)
+        return pix.tobytes("png")
+    except Exception as exc:  # noqa: BLE001
+        raw = owner.extract_image(xref)
+        return bytes(raw["image"])
+
+
+def lift_image_object(doc: PdfDocument, page_index: int, target: dict,
+                      page_objects: Optional[List[dict]] = None) -> bytes:
+    """Detach one baked image placement so it can become an editable overlay.
+
+    ``delete_image`` removes *every* placement sharing the xref, so the other
+    placements are re-inserted at their original rectangles afterwards.
+    Returns the image bytes for the overlay.
+    """
+    if page_objects is None:
+        page_objects = list_image_objects(doc, page_index)
+    xref = int(target["xref"])
+    data = image_object_bytes(doc, xref)
+    def _same(a: fitz.Rect, b: fitz.Rect) -> bool:
+        return all(abs(v) < 0.5 for v in
+                   (a.x0 - b.x0, a.y0 - b.y0, a.x1 - b.x1, a.y1 - b.y1))
+
+    others = [o for o in page_objects
+              if o["xref"] == xref and not _same(o["bbox"], target["bbox"])]
+    page = doc.page(page_index)
+    try:
+        page.delete_image(xref)
+    except Exception as exc:  # noqa: BLE001
+        raise PdfError(f"Image detach failed: {exc}") from exc
+    for o in others:
+        try:
+            page.insert_image(o["bbox"], stream=data, keep_proportion=False,
+                              rotate=o["rotate"])
+        except Exception:  # noqa: BLE001
+            pass
+    doc.mark_dirty()
+    return data
 
 
 def replace_image(doc: PdfDocument, page_index: int, image_xref: int,

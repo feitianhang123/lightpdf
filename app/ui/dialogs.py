@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
 from ..i18n import tr
 from ..core.compare import CompareResult
 
+MIN_SIZE = 12.0          # smallest editable object (points)
+
 
 class WatermarkDialog(QDialog):
     def __init__(self, parent=None) -> None:
@@ -2295,3 +2297,88 @@ class RidingStampDialog(QDialog):
         self.info.setText(tr("dlg.riding.info", n=len(pages), g=g,
                              w=round(first[0][2], 1), h=round(h_pt, 1),
                              groups=(len(pages) + g - 1) // g))
+
+
+class ObjectPropertiesDialog(QDialog):
+    """Exact size / position editor for an inserted image or stamp."""
+
+    def __init__(self, rect: fitz.Rect, kind: str = "image", parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(tr("dlg.object.title"))
+        self._aspect = rect.width / max(1.0, rect.height)
+        self._updating = False
+        self._delete_requested = False
+
+        self.x = self._spin(-2000.0, 4000.0, rect.x0)
+        self.y = self._spin(-2000.0, 4000.0, rect.y0)
+        self.width = self._spin(MIN_SIZE, 3000.0, rect.width)
+        self.height = self._spin(MIN_SIZE, 3000.0, rect.height)
+        self.lock = QCheckBox(tr("dlg.object.aspect"))
+        self.lock.setChecked(True)
+        self.width.valueChanged.connect(self._width_changed)
+        self.height.valueChanged.connect(self._height_changed)
+
+        hint = QLabel(tr("dlg.object.hint"))
+        hint.setWordWrap(True)
+        hint.setObjectName("hintLabel")
+        hint.setMinimumHeight(58)
+
+        title = QLabel(tr("dlg.object.title"))
+        f = title.font()
+        f.setBold(True)
+        f.setPointSize(f.pointSize() + 2)
+        title.setFont(f)
+
+        form = QFormLayout()
+        form.addRow(tr("dlg.object.x"), self.x)
+        form.addRow(tr("dlg.object.y"), self.y)
+        form.addRow(tr("dlg.object.width"), self.width)
+        form.addRow(tr("dlg.object.height"), self.height)
+        form.addRow("", self.lock)
+        form.addRow(hint)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.delete_button = buttons.addButton(tr("dlg.object.delete"),
+                                               QDialogButtonBox.DestructiveRole)
+        self.delete_button.clicked.connect(self._on_delete)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        form.addRow(buttons)
+
+        outer = QVBoxLayout(self)
+        outer.addWidget(title)
+        outer.addLayout(form)
+        self.resize(420, 320)
+
+    @staticmethod
+    def _spin(lo: float, hi: float, value: float) -> QDoubleSpinBox:
+        box = QDoubleSpinBox()
+        box.setRange(lo, hi)
+        box.setDecimals(1)
+        box.setSingleStep(1.0)
+        box.setValue(value)
+        return box
+
+    def _width_changed(self, value: float) -> None:
+        if self.lock.isChecked() and not self._updating:
+            self._updating = True
+            self.height.setValue(max(float(MIN_SIZE), value / self._aspect))
+            self._updating = False
+
+    def _height_changed(self, value: float) -> None:
+        if self.lock.isChecked() and not self._updating:
+            self._updating = True
+            self.width.setValue(max(float(MIN_SIZE), value * self._aspect))
+            self._updating = False
+
+    def _on_delete(self) -> None:
+        self._delete_requested = True
+        self.accept()
+
+    def delete_requested(self) -> bool:
+        return self._delete_requested
+
+    def rect(self) -> fitz.Rect:
+        return fitz.Rect(self.x.value(), self.y.value(),
+                         self.x.value() + self.width.value(),
+                         self.y.value() + self.height.value())

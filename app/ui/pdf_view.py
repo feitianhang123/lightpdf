@@ -6,14 +6,23 @@ from typing import Dict, List, Optional, Tuple
 
 import fitz
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (QGraphicsPixmapItem, QGraphicsRectItem,
-                               QGraphicsScene, QGraphicsView)
+                               QGraphicsScene, QGraphicsSimpleTextItem,
+                               QGraphicsView)
 
 from ..core import annotations as annot
+from ..core import editor as ed
 from ..core.document import PdfDocument
 from ..core.editor import TextSpan, iter_spans
+from ..i18n import tr
 from .theme import PAGE_AREA
+
+# visual style of the editable-object selection frame
+SEL_COLOR = QColor(0, 120, 215)
+HANDLE_SIZE = 8.0
+MIN_OBJECT_SIZE = 12.0
+HANDLES = ("nw", "n", "ne", "e", "se", "s", "sw", "w")
 
 TOOLS = ["select", "highlight", "underline", "strikeout", "note", "freetext",
          "ink", "rect", "ellipse", "line", "arrow", "stamp", "edittext",
@@ -44,6 +53,8 @@ class PdfView(QGraphicsView):
     stampRequested = Signal(int, QPointF)  # page index, displayed point
     inkFinished = Signal(int, list)
     statusMessage = Signal(str)
+    objectEditRequested = Signal(int)   # overlay index (double click)
+    overlayChanged = Signal()           # overlays added / moved / removed
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -53,6 +64,7 @@ class PdfView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag)
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setBackgroundBrush(QColor(PAGE_AREA))
+        self.setFocusPolicy(Qt.StrongFocus)
 
         self.doc: Optional[PdfDocument] = None
         self.zoom: float = 1.0
@@ -84,6 +96,9 @@ class PdfView(QGraphicsView):
         self.pending_images: List[dict] = []
         self._pending_owner = None
         self._img_drag = None
+        self._selected: Optional[int] = None
+        self._frame_items: List[object] = []
+        self._img_snapshot: bool = False
         self._drag_rect_item: Optional[QGraphicsRectItem] = None
         self._ink_points: List[QPointF] = []
         self._current_page = 0
@@ -100,10 +115,13 @@ class PdfView(QGraphicsView):
         if doc is not self._pending_owner:
             self.pending_images.clear()
             self._img_drag = None
+            self._selected = None
+            self._frame_items = []
             self._pending_owner = doc
         self.doc = doc
         self.spans_cache.clear()
         self._rendered.clear()
+        self._frame_items = []
         self._scene.clear()
         self._items.clear()
         self._geoms.clear()
@@ -132,6 +150,7 @@ class PdfView(QGraphicsView):
         assert self.doc is not None
         self._geoms.clear()
         self._items.clear()
+        self._frame_items = []
         self._scene.clear()
         n = self.doc.page_count
         if n == 0:
@@ -334,46 +353,65 @@ class PdfView(QGraphicsView):
                 self.viewport().setCursor(Qt.ClosedHandCursor)
                 event.accept()
                 return
-            if self.tool == "select":
-                hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
-                if hit:
-                    xref = annot.annot_xref_at(self.doc, hit[0],
-                                               self.page_to_pdf_point(hit[0], hit[1]))
-                    if xref is not None:
-                        info = annot.annot_info(self.doc, hit[0], xref)
-                        if info.get("type") == "Text":
-                            self.annotActivated.emit(hit[0], xref)
-                        self._move_xref = xref
-                        self._move_index = hit[0]
-                        self._move_last_pdf = self.page_to_pdf_point(hit[0], hit[1])
-                        self._move_snapshot = False
-                        self.viewport().setCursor(Qt.SizeAllCursor)
-                        event.accept()
-                        return
-                    img = self._pending_image_hit(hit[0],
-                                                  self.page_to_pdf_point(hit[0], hit[1]))
-                    if img is not None:
-                        idx, corner = img
-                        self._img_drag = {"index": idx, "corner": corner, "page": hit[0],
-                                          "start": self.page_to_pdf_point(hit[0], hit[1]),
-                                          "rect": fitz.Rect(self.pending_images[idx]["rect"])}
-                        self.viewport().setCursor(Qt.SizeFDiagCursor if corner
-                                                  else Qt.SizeAllCursor)
-                        event.accept()
-                        return
+            hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
+            if hit and self.tool == "select":
+                xref = annot.annot_xref_at(self.doc, hit[0],
+                                           self.page_to_pdf_point(hit[0], hit[1]))
+                if xref is not None:
+                    info = annot.annot_info(self.doc, hit[0], xref)
+                    if info.get("type") == "Text":
+                        self.annotActivated.emit(hit[0], xref)
+                    self._move_xref = xref
+                    self._move_index = hit[0]
+                    self._move_last_pdf = self.page_to_pdf_point(hit[0], hit[1])
+                    self._move_snapshot = False
+                    self.viewport().setCursor(Qt.SizeAllCursor)
+                    event.accept()
+                    return
+            # Clicking an existing object always selects it first -- even while
+            # the stamp / insert-image tool is active, so stamps stay movable.
+            if hit and self.tool in ("select", "stamp", "insertimage"):
+                index, dp = hit
+                obj = self._overlay_hit(index, dp)
+                if obj is None and self.tool == "select":
+                    obj = self._select_baked_image(index, dp)
+                if obj is not None:
+                    idx, handle = obj
+                    self._selected = idx
+                    self._img_snapshot = False
+                    self._img_drag = {"index": idx, "handle": handle, "page": index,
+                                      "start": QPointF(dp),
+                                      "rect": fitz.Rect(self.pending_images[idx]["rect"])}
+                    self._rebuild_pending_items()
+                    self.viewport().setCursor(self._cursor_for(handle))
+                    event.accept()
+                    return
+                if self.tool == "select":
+                    self._clear_baked_selections()
+                    self._selected = None
+                    self._rebuild_pending_items()
             if self.tool != "select":
                 self._handle_tool_press(event)
                 return
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        if self.doc and self.tool == "select":
+        if self.doc and self.tool in ("select", "stamp", "insertimage"):
             hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
             if hit:
-                xref = annot.annot_xref_at(self.doc, hit[0],
-                                           self.page_to_pdf_point(hit[0], hit[1]))
+                index, dp = hit
+                obj = self._overlay_hit(index, dp)
+                if obj is not None:
+                    self._selected = obj[0]
+                    self._rebuild_pending_items()
+                    self.objectEditRequested.emit(obj[0])
+                    event.accept()
+                    return
+                xref = (annot.annot_xref_at(self.doc, index,
+                                            self.page_to_pdf_point(index, dp))
+                        if self.tool == "select" else None)
                 if xref is not None:
-                    self.annotEditRequested.emit(hit[0], xref)
+                    self.annotEditRequested.emit(index, xref)
                     return
         super().mouseDoubleClickEvent(event)
 
@@ -382,15 +420,26 @@ class PdfView(QGraphicsView):
             hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
             if hit:
                 d = self._img_drag
-                pt = self.page_to_pdf_point(hit[0], hit[1])
+                idx = d["index"]
+                if idx >= len(self.pending_images):
+                    self._img_drag = None
+                    event.accept()
+                    return
+                if not self._img_snapshot:
+                    self.aboutToModify.emit()      # one undo step per interaction
+                    self._img_snapshot = True
+                    self.materialize_overlay(idx, push=False)
+                dp = hit[1]
                 r0 = d["rect"]
-                if d["corner"] is None:
-                    dx = pt.x - d["start"].x
-                    dy = pt.y - d["start"].y
+                if d["handle"] is None:
+                    dx = dp.x() - d["start"].x()
+                    dy = dp.y() - d["start"].y()
                     new = fitz.Rect(r0.x0 + dx, r0.y0 + dy, r0.x1 + dx, r0.y1 + dy)
                 else:
-                    new = self._resized_rect(r0, d["corner"], pt, keep_aspect=True)
-                self.pending_images[d["index"]]["rect"] = new
+                    keep = not bool(event.modifiers() & Qt.ShiftModifier)
+                    new = self._resized_rect(r0, d["handle"],
+                                             fitz.Point(dp.x(), dp.y()), keep)
+                self.pending_images[idx]["rect"] = self._clamp_display_rect(d["page"], new)
                 self._rebuild_pending_items()
             event.accept()
             return
@@ -429,13 +478,19 @@ class PdfView(QGraphicsView):
             self._ink_points.append(event.position())
             self.viewport().update()
             return
+        if self.tool == "select" and self.doc:
+            hit = self.scene_to_page(self.mapToScene(event.position().toPoint()))
+            obj = self._overlay_hit(hit[0], hit[1]) if hit else None
+            self.viewport().setCursor(self._cursor_for(obj[1]) if obj else Qt.ArrowCursor)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._img_drag is not None:
             self._img_drag = None
+            self._img_snapshot = False
             self.apply_cursor()
             self.doc.mark_dirty()
+            self.overlayChanged.emit()
             event.accept()
             return
         if self._move_xref is not None:
@@ -467,13 +522,61 @@ class PdfView(QGraphicsView):
         else:
             self.viewport().setCursor(Qt.ArrowCursor)
 
-    # ------------------------------------------------------- pending images
-    def add_pending_image(self, page: int, rect, source) -> None:
-        """Add an image as a movable/resizable overlay (baked into the PDF on
-        save/print)."""
-        self.pending_images.append({"page": int(page), "rect": fitz.Rect(rect),
-                                    "source": source, "item": None})
+    # ------------------------------------------------------- editable overlays
+    def add_pending_image(self, page: int, rect, source, *, kind: str = "image",
+                          rotate: int = 0, baked: Optional[dict] = None,
+                          select: bool = True) -> int:
+        """Add an image/stamp as a movable, resizable overlay.
+
+        ``rect`` is in *display* page coordinates (what the user sees); it is
+        converted back to unrotated PDF coordinates when the overlay is baked.
+        A ``baked`` entry means the picture is still drawn by the page itself
+        and will only be detached when the user actually edits it.
+        """
+        self.pending_images.append({
+            "page": int(page), "rect": fitz.Rect(rect), "source": source,
+            "item": None, "kind": kind, "rotate": int(rotate or 0),
+            "baked": baked,
+        })
+        idx = len(self.pending_images) - 1
+        if select:
+            self._selected = idx
         self._rebuild_pending_items()
+        self.overlayChanged.emit()
+        return idx
+
+    def overlay_snapshot(self) -> List[dict]:
+        """Plain-data copy of the overlay state (used by undo / redo)."""
+        out = []
+        for im in self.pending_images:
+            baked = im.get("baked")
+            copy = None
+            if baked:
+                copy = {"xref": baked["xref"], "bbox": fitz.Rect(baked["bbox"]),
+                        "rotate": baked.get("rotate", 0),
+                        "objects": [dict(o, bbox=fitz.Rect(o["bbox"]))
+                                    for o in baked.get("objects", [])]}
+            out.append({"page": im["page"], "rect": fitz.Rect(im["rect"]),
+                        "source": im["source"], "item": None,
+                        "kind": im.get("kind", "image"),
+                        "rotate": im.get("rotate", 0), "baked": copy})
+        return out
+
+    def set_overlays(self, items: List[dict]) -> None:
+        self._detach_items()
+        self.pending_images = [dict(im) for im in items]
+        self._selected = None
+        self._img_drag = None
+        self._img_snapshot = False
+        self._rebuild_pending_items()
+
+    def selected_object(self) -> Optional[dict]:
+        if self._selected is None or not (0 <= self._selected < len(self.pending_images)):
+            return None
+        im = self.pending_images[self._selected]
+        return {"index": self._selected, "page": im["page"],
+                "rect": fitz.Rect(im["rect"]), "kind": im.get("kind", "image"),
+                "baked": im.get("baked") is not None}
 
     def _pixmap_for(self, source) -> QPixmap:
         pm = QPixmap()
@@ -483,20 +586,87 @@ class PdfView(QGraphicsView):
             pm.load(str(source))
         return pm
 
+    # ---------------------------------------------------------- frame/handles
+    def _clear_frame_items(self) -> None:
+        for it in self._frame_items:
+            try:
+                self._scene.removeItem(it)
+            except Exception:  # noqa: BLE001
+                pass
+        self._frame_items = []
+
+    def _detach_items(self, indices=None) -> None:
+        """Remove the scene graphics owned by overlays before changing the list."""
+        targets = range(len(self.pending_images)) if indices is None else indices
+        for i in targets:
+            if 0 <= i < len(self.pending_images):
+                im = self.pending_images[i]
+                if im.get("item") is not None:
+                    try:
+                        self._scene.removeItem(im["item"])
+                    except Exception:  # noqa: BLE001
+                        pass
+                    im["item"] = None
+        self._clear_frame_items()
+
+    @staticmethod
+    def _handle_points(r: fitz.Rect) -> Dict[str, Tuple[float, float]]:
+        mx, my = (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2
+        return {"nw": (r.x0, r.y0), "n": (mx, r.y0), "ne": (r.x1, r.y0),
+                "e": (r.x1, my), "se": (r.x1, r.y1), "s": (mx, r.y1),
+                "sw": (r.x0, r.y1), "w": (r.x0, my)}
+
+    def _draw_selection(self) -> None:
+        self._clear_frame_items()
+        if self._selected is None or not (0 <= self._selected < len(self.pending_images)):
+            return
+        if not self._geoms or not self.doc or not self.doc.is_open:
+            return
+        im = self.pending_images[self._selected]
+        pg = im["page"]
+        if pg < 0 or pg >= len(self._geoms):
+            return
+        g = self._geoms[pg]
+        r = im["rect"]
+        x, y = g.x + r.x0 * self.zoom, g.y + r.y0 * self.zoom
+        w, h = r.width * self.zoom, r.height * self.zoom
+        pen = QPen(SEL_COLOR); pen.setWidth(1); pen.setStyle(Qt.DashLine)
+        frame = QGraphicsRectItem(QRectF(x, y, w, h))
+        frame.setPen(pen); frame.setZValue(9)
+        self._scene.addItem(frame); self._frame_items.append(frame)
+        for _name, (px, py) in self._handle_points(r).items():
+            sx, sy = g.x + px * self.zoom, g.y + py * self.zoom
+            hp = QPen(SEL_COLOR); hp.setWidth(1)
+            handle = QGraphicsRectItem(QRectF(sx - HANDLE_SIZE / 2,
+                                              sy - HANDLE_SIZE / 2,
+                                              HANDLE_SIZE, HANDLE_SIZE))
+            handle.setPen(hp)
+            handle.setBrush(QBrush(QColor(255, 255, 255)))
+            handle.setZValue(10)
+            self._scene.addItem(handle); self._frame_items.append(handle)
+        label = QGraphicsSimpleTextItem(f"{r.width:.0f} x {r.height:.0f} pt")
+        label.setBrush(QBrush(SEL_COLOR))
+        br = label.boundingRect()
+        plate = QGraphicsRectItem(QRectF(x, max(0.0, y - 20), br.width() + 8,
+                                         br.height() + 2))
+        plate.setPen(QPen(Qt.NoPen))
+        plate.setBrush(QBrush(QColor(255, 255, 255)))
+        plate.setZValue(9)
+        label.setPos(x + 4, max(0.0, y - 20))
+        label.setZValue(10)
+        self._scene.addItem(plate); self._frame_items.append(plate)
+        self._scene.addItem(label); self._frame_items.append(label)
+
     def _rebuild_pending_items(self) -> None:
-        for im in self.pending_images:
-            if im.get("item") is not None:
-                try:
-                    self._scene.removeItem(im["item"])
-                except Exception:  # noqa: BLE001
-                    pass
-                im["item"] = None
+        self._detach_items()
         if not self.doc or not self.doc.is_open or not self._geoms:
             return
         for im in self.pending_images:
             pg = im["page"]
             if pg < 0 or pg >= len(self._geoms):
                 continue
+            if im.get("baked") is not None:
+                continue            # still rendered as part of the page bitmap
             g = self._geoms[pg]
             r = im["rect"]
             x = g.x + r.x0 * self.zoom
@@ -513,67 +683,241 @@ class PdfView(QGraphicsView):
             item.setTransformationMode(Qt.SmoothTransformation)
             self._scene.addItem(item)
             im["item"] = item
+        self._draw_selection()
 
     def has_pending_images(self) -> bool:
-        return bool(self.pending_images)
+        return any(im.get("baked") is None for im in self.pending_images)
 
     def bake_images(self) -> bool:
-        """Write overlay images into the document."""
-        if not self.pending_images or not self.doc:
+        """Write all loose overlays into the PDF (display -> PDF coordinates)."""
+        if not self.doc:
             return False
-        from ..core import editor as ed
-        for im in self.pending_images:
+        todo = [im for im in self.pending_images if im.get("baked") is None]
+        if not todo:
+            return False
+        for im in todo:
             try:
-                ed.insert_image_bytes(self.doc, im["page"], im["rect"], im["source"])
+                page = self.doc.page(im["page"])
+                pdf_rect = fitz.Rect(im["rect"]) * page.derotation_matrix
+                ed.insert_image_bytes(self.doc, im["page"], pdf_rect, im["source"],
+                                      rotate=im.get("rotate") or 0)
             except Exception:  # noqa: BLE001
                 pass
         self.doc.mark_dirty()
+        self._detach_items()
         self.pending_images.clear()
-        self._rebuild_pending_items()
+        self._selected = None
+        self._img_drag = None
         return True
 
-    def _pending_image_hit(self, page: int, pt):
-        """Return (index, corner) for a pending image at pdf point pt."""
+    # ------------------------------------------------------------ hit testing
+    @staticmethod
+    def _cursor_for(handle: Optional[str]):
+        if handle is None:
+            return Qt.SizeAllCursor
+        if handle in ("nw", "se"):
+            return Qt.SizeFDiagCursor
+        if handle in ("ne", "sw"):
+            return Qt.SizeBDiagCursor
+        if handle in ("n", "s"):
+            return Qt.SizeVerCursor
+        return Qt.SizeHorCursor
+
+    def _overlay_hit(self, page: int, dp: QPointF):
+        """Return (index, handle) for an overlay at a display-space point."""
         tol = 10.0 / max(0.1, self.zoom)
+        p = fitz.Point(dp.x(), dp.y())
         for i in range(len(self.pending_images) - 1, -1, -1):
             im = self.pending_images[i]
             if im["page"] != page:
                 continue
             r = im["rect"]
             outer = fitz.Rect(r.x0 - tol, r.y0 - tol, r.x1 + tol, r.y1 + tol)
-            if not outer.contains(pt):
+            if not outer.contains(p):
                 continue
-            corners = {"nw": (r.x0, r.y0), "ne": (r.x1, r.y0),
-                       "sw": (r.x0, r.y1), "se": (r.x1, r.y1)}
-            for name, (cx, cy) in corners.items():
-                if abs(pt.x - cx) <= tol and abs(pt.y - cy) <= tol:
-                    return i, name
+            if i == self._selected:
+                for name, (cx, cy) in self._handle_points(r).items():
+                    if abs(p.x - cx) <= tol and abs(p.y - cy) <= tol:
+                        return i, name
             return i, None
         return None
 
+    def _select_baked_image(self, page: int, dp: QPointF):
+        """Pick an image/stamp already baked into the PDF, without touching it."""
+        if not self.doc or not self.doc.is_open:
+            return None
+        pg = self.doc.page(page)
+        try:
+            objects = ed.list_image_objects(self.doc, page)
+        except Exception:  # noqa: BLE001
+            return None
+        if not objects:
+            return None
+        tol = 4.0 / max(0.1, self.zoom)
+        pdf_pt = fitz.Point(dp.x(), dp.y()) * pg.derotation_matrix
+        best, best_key = None, None
+        for n, o in enumerate(objects):
+            b = o["bbox"]
+            if not fitz.Rect(b.x0 - tol, b.y0 - tol, b.x1 + tol, b.y1 + tol).contains(pdf_pt):
+                continue
+            key = (b.get_area(), -n)       # prefer the smallest / topmost object
+            if best_key is None or key < best_key:
+                best, best_key = o, key
+        if best is None:
+            return None
+        try:
+            data = ed.image_object_bytes(self.doc, best["xref"])
+        except Exception:  # noqa: BLE001
+            return None
+        display_rect = fitz.Rect(best["bbox"]) * pg.rotation_matrix
+        baked = {"xref": best["xref"], "bbox": fitz.Rect(best["bbox"]),
+                 "rotate": best["rotate"], "objects": objects}
+        idx = self.add_pending_image(page, display_rect, data, kind="image",
+                                     rotate=best["rotate"], baked=baked, select=True)
+        self.statusMessage.emit(tr("msg.object_selected"))
+        return idx, None
+
+    def _clear_baked_selections(self) -> None:
+        doomed = [i for i, im in enumerate(self.pending_images)
+                  if im.get("baked") is not None]
+        if not doomed:
+            return
+        self._detach_items(doomed)
+        self.pending_images = [im for i, im in enumerate(self.pending_images)
+                               if i not in set(doomed)]
+        self._selected = None
+        self._rebuild_pending_items()
+
+    # --------------------------------------------------------- object editing
+    def materialize_overlay(self, idx: int, push: bool = True) -> bool:
+        """Detach a baked image so further edits happen on a movable overlay."""
+        if not (0 <= idx < len(self.pending_images)):
+            return False
+        im = self.pending_images[idx]
+        baked = im.get("baked")
+        if baked is None:
+            return False
+        if push:
+            self.aboutToModify.emit()
+        try:
+            data = ed.lift_image_object(self.doc, im["page"], baked,
+                                        baked.get("objects"))
+        except Exception as exc:  # noqa: BLE001
+            self.statusMessage.emit(str(exc))
+            return False
+        im["source"] = data
+        im["baked"] = None
+        self.doc.mark_dirty()
+        self.invalidate_page(im["page"])
+        self._rebuild_pending_items()
+        self.overlayChanged.emit()
+        return True
+
+    def set_object_rect(self, idx: int, rect, push: bool = True) -> None:
+        if not (0 <= idx < len(self.pending_images)):
+            return
+        if push:
+            self.aboutToModify.emit()
+        self.materialize_overlay(idx, push=False)
+        im = self.pending_images[idx]
+        im["rect"] = self._clamp_display_rect(im["page"], fitz.Rect(rect))
+        self._rebuild_pending_items()
+        self.doc.mark_dirty()
+        self.overlayChanged.emit()
+
+    def remove_selected(self) -> bool:
+        idx = self._selected
+        if idx is None or not (0 <= idx < len(self.pending_images)):
+            return False
+        self.aboutToModify.emit()
+        self.materialize_overlay(idx, push=False)
+        self._detach_items([idx])
+        del self.pending_images[idx]
+        self._selected = None
+        self._img_drag = None
+        self._rebuild_pending_items()
+        self.doc.mark_dirty()
+        self.overlayChanged.emit()
+        return True
+
+    def _clamp_display_rect(self, page_index: int, r: fitz.Rect) -> fitz.Rect:
+        try:
+            pr = self.doc.page(page_index).rect
+        except Exception:  # noqa: BLE001
+            return r
+        dx = dy = 0.0
+        if r.x0 < 0:
+            dx = -r.x0
+        elif r.x1 > pr.width:
+            dx = pr.width - r.x1
+        if r.y0 < 0:
+            dy = -r.y0
+        elif r.y1 > pr.height:
+            dy = pr.height - r.y1
+        return fitz.Rect(r.x0 + dx, r.y0 + dy, r.x1 + dx, r.y1 + dy)
+
     @staticmethod
-    def _resized_rect(r: fitz.Rect, corner: str, pt, keep_aspect: bool = True) -> fitz.Rect:
+    def _resized_rect(r: fitz.Rect, handle: str, pt,
+                      keep_aspect: bool = True) -> fitz.Rect:
+        """Resize around the opposite corner/edge; ``Shift`` unlocks the ratio."""
         x0, y0, x1, y1 = r.x0, r.y0, r.x1, r.y1
         if r.width <= 0 or r.height <= 0:
             return r
+        m = MIN_OBJECT_SIZE
+        has_w, has_e = "w" in handle, "e" in handle
+        has_n, has_s = "n" in handle, "s" in handle
+        nx0, ny0, nx1, ny1 = x0, y0, x1, y1
+        if has_w:
+            nx0 = min(pt.x, x1 - m)
+        if has_e:
+            nx1 = max(pt.x, x0 + m)
+        if has_n:
+            ny0 = min(pt.y, y1 - m)
+        if has_s:
+            ny1 = max(pt.y, y0 + m)
+        if not keep_aspect:
+            return fitz.Rect(nx0, ny0, max(nx0 + m, nx1), max(ny0 + m, ny1))
         ar = r.width / r.height
-        if corner == "se":
-            nw = max(12.0, pt.x - x0)
-            nh = nw / ar if keep_aspect else max(12.0, pt.y - y0)
-            return fitz.Rect(x0, y0, x0 + nw, y0 + nh)
-        if corner == "sw":
-            nw = max(12.0, x1 - pt.x)
-            nh = nw / ar if keep_aspect else max(12.0, pt.y - y0)
-            return fitz.Rect(x1 - nw, y0, x1, y0 + nh)
-        if corner == "ne":
-            nw = max(12.0, pt.x - x0)
-            nh = nw / ar if keep_aspect else max(12.0, y1 - pt.y)
-            return fitz.Rect(x0, y1 - nh, x0 + nw, y1)
-        if corner == "nw":
-            nw = max(12.0, x1 - pt.x)
-            nh = nw / ar if keep_aspect else max(12.0, y1 - pt.y)
-            return fitz.Rect(x1 - nw, y1 - nh, x1, y1)
-        return r
+        if has_w or has_e:
+            nw = max(m, nx1 - nx0)
+            nh = nw / ar
+        else:
+            nh = max(m, ny1 - ny0)
+            nw = nh * ar
+        nw, nh = max(m, nw), max(m, nh)
+        if has_w:
+            ax = x1 - nw
+        elif has_e:
+            ax = x0
+        else:
+            ax = (x0 + x1) / 2 - nw / 2
+        if has_n:
+            ay = y1 - nh
+        elif has_s:
+            ay = y0
+        else:
+            ay = (y0 + y1) / 2 - nh / 2
+        return fitz.Rect(ax, ay, ax + nw, ay + nh)
+
+    def keyPressEvent(self, event) -> None:
+        if self.tool in ("select", "stamp", "insertimage") and self._selected is not None:
+            key = event.key()
+            if key in (Qt.Key_Delete, Qt.Key_Backspace):
+                self.remove_selected()
+                event.accept()
+                return
+            step = 10.0 if event.modifiers() & Qt.ShiftModifier else 1.0
+            moves = {Qt.Key_Left: (-step, 0.0), Qt.Key_Right: (step, 0.0),
+                     Qt.Key_Up: (0.0, -step), Qt.Key_Down: (0.0, step)}
+            if key in moves and 0 <= self._selected < len(self.pending_images):
+                dx, dy = moves[key]
+                r = self.pending_images[self._selected]["rect"]
+                self.set_object_rect(self._selected,
+                                     fitz.Rect(r.x0 + dx, r.y0 + dy,
+                                               r.x1 + dx, r.y1 + dy))
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def _handle_tool_press(self, event) -> None:
         scene_pos = self.mapToScene(event.position().toPoint())

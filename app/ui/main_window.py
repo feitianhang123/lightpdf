@@ -29,9 +29,10 @@ from .about import AboutDialog
 from .dialogs import (CompareWindow, DeletePagesDialog, HeaderFooterDialog,
                       ImagesToPdfDialog,
                       InsertPagesDialog, MarkupStyleDialog, MergeDialog,
-                      PageNumbersDialog, PrintDialog, PropertiesDialog,
-                      RidingStampDialog, RotateDialog, SplitDialog,
-                      StampSettingsDialog, TextEditDialog, WatermarkDialog)
+                      ObjectPropertiesDialog, PageNumbersDialog, PrintDialog,
+                      PropertiesDialog, RidingStampDialog, RotateDialog,
+                      SplitDialog, StampSettingsDialog, TextEditDialog,
+                      WatermarkDialog)
 from .document_tab import DocumentTab
 from .icons import icon
 from .panels import LeftDock, ResultsPanel
@@ -138,6 +139,8 @@ class MainWindow(QMainWindow):
         v.noteRequested.connect(lambda i, p, t=tab: self._on_note_requested(t, i, p))
         v.annotActivated.connect(lambda i, x, t=tab: self._on_annot_activated(t, i, x))
         v.stampRequested.connect(lambda i, p, t=tab: self._on_stamp_requested(t, i, p))
+        v.objectEditRequested.connect(lambda i, t=tab: self._on_object_edit(t, i))
+        v.overlayChanged.connect(lambda t=tab: self._on_overlay_changed(t))
         idx = self.tabs.addTab(tab, tab.title())
         self.tabs.setCurrentIndex(idx)
         self._set_enabled(True)
@@ -220,6 +223,7 @@ class MainWindow(QMainWindow):
 
         mk("act.edit_text", lambda: self.set_tool("edittext"), "edittext")
         mk("act.insert_image", lambda: self.set_tool("insertimage"), "insertimage")
+        mk("act.object_props", self.do_object_props, "insertimage")
         mk("act.insert_text", lambda: self.set_tool("freetext"), "freetext")
         mk("act.find", self.focus_search, "search", QKeySequence.Find)
         mk("act.compare", self.do_compare, "compare")
@@ -293,7 +297,8 @@ class MainWindow(QMainWindow):
 
         self._menus["menu.edit"] = m.addMenu("")
         me = self._menus["menu.edit"]
-        for k in ("act.edit_text", "act.insert_image", "act.insert_text"):
+        for k in ("act.edit_text", "act.insert_image", "act.object_props",
+                  "act.insert_text"):
             me.addAction(self._actions[k])
         me.addSeparator(); me.addAction(self._actions["act.find"])
 
@@ -309,7 +314,7 @@ class MainWindow(QMainWindow):
             ma.addAction(self._tool_actions[name])
         ma.addSeparator()
         for k in ("annot.markup_color", "annot.pen_color", "annot.stamp_settings",
-                  "annot.riding_stamp", "annot.list"):
+                  "annot.riding_stamp", "act.object_props", "annot.list"):
             ma.addAction(self._actions[k])
 
         self._menus["menu.pages"] = m.addMenu("")
@@ -685,17 +690,18 @@ class MainWindow(QMainWindow):
                                 tr("msg.stamp_invalid", reason=str(exc)))
             self.do_stamp_settings()
             return
-        pt = tab.view.page_to_pdf_point(index, dp)
-        rect = fitz.Rect(pt.x, pt.y, pt.x + w, pt.y + h)
+        # The stamp becomes a live overlay instead of being baked immediately,
+        # so it can be moved / resized / deleted before it is written to disk.
+        rect = fitz.Rect(dp.x(), dp.y(), dp.x() + w, dp.y() + h)
+        rotate = tab.doc.page(index).rotation or 0
         tab.push_undo()
-        try:
-            annot.insert_stamp_image(tab.doc, index, rect, png)
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
-        tab.view.invalidate_page(index)
-        self.left.thumbnails.refresh_page(tab.doc, index)
+        tab.view.add_pending_image(index, rect, png, kind="stamp", rotate=rotate)
+        tab.doc.mark_dirty()
+        self.set_tool("select")
         self._update_title()
         self._update_undo_redo()
+        self.statusBar().showMessage(
+            tr("msg.object_inserted", kind=tr("dlg.object.kind_stamp")), 7000)
 
     def do_riding_stamp(self) -> None:
         """批注 → 插入骑缝章：把一枚章切成 N 片分别贴到多页页边。"""
@@ -718,6 +724,44 @@ class MainWindow(QMainWindow):
             tab.view.invalidate_page(i)
         self._refresh_tab(tab)
         self.statusBar().showMessage(tr("msg.riding_done", n=len(pages)), 6000)
+
+    # ------------------------------------------------------- object editing
+    def do_object_props(self) -> None:
+        """Edit the selected image / stamp from a menu command."""
+        tab = self._cur_tab()
+        if not tab:
+            QMessageBox.information(self, tr("msg.no_doc.title"), tr("msg.no_doc.body"))
+            return
+        obj = tab.view.selected_object()
+        if obj is None:
+            QMessageBox.information(self, tr("dlg.object.title"), tr("msg.object_none"))
+            return
+        self._open_object_dialog(tab, obj["index"])
+
+    def _on_object_edit(self, tab: DocumentTab, idx: int) -> None:
+        if tab is self._cur_tab():
+            self._open_object_dialog(tab, idx)
+
+    def _open_object_dialog(self, tab: DocumentTab, idx: int) -> None:
+        obj = tab.view.selected_object()
+        if obj is None or obj["index"] != idx:
+            return
+        dlg = ObjectPropertiesDialog(obj["rect"], obj["kind"], self)
+        if not dlg.exec():
+            return
+        if dlg.delete_requested():
+            tab.view.remove_selected()
+        else:
+            tab.view.set_object_rect(idx, dlg.rect())
+        self._update_title()
+        self._update_undo_redo()
+
+    def _on_overlay_changed(self, tab: DocumentTab) -> None:
+        if tab is not self._cur_tab():
+            return
+        self._update_title()
+        self._update_undo_redo()
+        self.statusBar().showMessage(tr("status.object_tip"), 4000)
 
     # --------------------------------------------------------------- editing
     def _on_span_picked(self, span, tab: DocumentTab) -> None:
@@ -752,12 +796,17 @@ class MainWindow(QMainWindow):
         from PIL import Image
         w, h = Image.open(path).size
         disp_w = 260.0
-        rect = QRectF(dp.x(), dp.y(), disp_w, disp_w * h / max(1, w))
-        pdf_rect = tab.view.page_to_pdf_rect(index, rect)
-        tab.view.add_pending_image(index, pdf_rect, path)
+        rect = fitz.Rect(dp.x(), dp.y(),
+                         dp.x() + disp_w, dp.y() + disp_w * h / max(1, w))
+        rotate = tab.doc.page(index).rotation or 0
+        tab.push_undo()
+        tab.view.add_pending_image(index, rect, path, kind="image", rotate=rotate)
         tab.doc.mark_dirty()
+        self.set_tool("select")
         self._update_title()
-        self.set_tool("select") if tab is self._cur_tab() else None
+        self._update_undo_redo()
+        self.statusBar().showMessage(
+            tr("msg.object_inserted", kind=tr("dlg.object.kind_image")), 7000)
 
     def _on_rect_picked(self, tab: DocumentTab, index: int, rect: QRectF, tool: str) -> None:
         if tab is not self._cur_tab():
@@ -863,7 +912,8 @@ class MainWindow(QMainWindow):
         """Write any pending overlay images into the document before use."""
         tab = self._cur_tab()
         if tab and tab.view.has_pending_images():
-            pages = {im["page"] for im in tab.view.pending_images}
+            pages = {im["page"] for im in tab.view.pending_images
+                     if im.get("baked") is None}
             tab.view.bake_images()
             if tab is self._cur_tab():
                 for p in pages:
