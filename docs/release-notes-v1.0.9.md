@@ -69,12 +69,20 @@
 
 ## 安装包说明
 
-- **Windows**：`setup.exe` 已重打包为 **1.0.9**（产品版本资源 `1.0.9`），包含上述全部改动。
+两个平台的安装包均已重打包为 **1.0.9**，并同步发布到
+[v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9)，
+都包含上述全部改动。
 
-  | 文件 | 大小（字节） | SHA-256 |
-  |---|---|---|
-  | `setup.exe` | 94,173,010 | `be869c4ea0ee3bb2e0eedc90260ae29f74c3bf45b37f41471d94fa85fc947a4c` |
+| 文件 | 平台 | 大小（字节） | SHA-256 |
+|---|---|---|---|
+| `setup.exe` | Windows 64 位 | 94,173,010 | `be869c4ea0ee3bb2e0eedc90260ae29f74c3bf45b37f41471d94fa85fc947a4c` |
+| `lightpdf_1.0.9_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,256,540 | `392ece34ddd3b1655cf34751daf50297eb11de0f2064d9ae40f40769fb520540` |
 
-- **银河麒麟 / Linux aarch64**：需在麒麟本机执行 `bash packaging/linux/build-kylin.sh`
-  重新构建 `lightpdf_1.0.9_arm64.deb`；仓库中现有的 `lightpdf_1.0.8_arm64.deb`
-  **不含本版改动**。离线源码快照 `lightpdf-linux-build-1.0.9.zip`（63 项）已同步更新。
+- `setup.exe` — 产品版本资源 `1.0.9`（Windows 64 位）。
+- `lightpdf_1.0.9_arm64.deb` — `Package: lightpdf` / `Version: 1.0.9` /
+  `Architecture: arm64`（aarch64 ELF），在麒麟本机用
+  `bash packaging/linux/build-kylin.sh` 构建；包内程序已核对含本版新增的浮动对象代码。
+- 仓库根目录的旧 `lightpdf_1.0.8_arm64.deb` 已由 1.0.9 包取代；离线源码快照
+  `lightpdf-linux-build-1.0.9.zip`（63 项）已同步更新。
+
+**完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.8...v1.0.9

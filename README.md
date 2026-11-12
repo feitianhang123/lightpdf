@@ -13,16 +13,18 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe` |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.8_arm64.deb` |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.9_arm64.deb` |
 
-> 麒麟 / Linux 的 `.deb` 需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重新构建；
-> 当前仓库里的 1.0.8 包不含 v1.0.9 的图片 / 图章编辑改动，Windows 安装包已是 1.0.9。
+> 两个平台的安装包均为 **v1.0.9**，已随
+> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 一并发布，
+> 都包含图片 / 图章可编辑的改动。日后源码再更新时，`.deb` 仍需在麒麟 aarch64 本机
+> 用 `packaging/linux/build-kylin.sh` 重新构建。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.8_arm64.deb
+sudo dpkg -i lightpdf_1.0.9_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -63,7 +65,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.8_arm64.deb
+# 产物：dist/lightpdf_1.0.9_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -94,6 +96,9 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
   - 旋转页（`/Rotate 90/180/270`）的显示坐标 ↔ PDF 坐标换算已修正，缩放页面后控制点位置同步更新。
   - 效果图：[`14_图章位置调整.png`](docs/preview/14_图章位置调整.png)。
 - 骑缝章仍按原方式一次性生成多页切片（每片也是图片对象，同样可再次选中微调）。
+- Windows 的 `setup.exe` 与麒麟 aarch64 的 `lightpdf_1.0.9_arm64.deb` 均已重打包并发布到
+  [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9)；
+  详见 [`docs/release-notes-v1.0.9.md`](docs/release-notes-v1.0.9.md)。
 
 ### 1.0.8
 

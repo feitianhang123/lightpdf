@@ -43,8 +43,8 @@ bash packaging/linux/build-kylin.sh        # 缺依赖会自动装，然后直�
 | `*__pycache__/` | 字节码缓存 |
 | `*.deb` / `setup.exe` | 旧安装包，不是构建输入 |
 
-> 💡 **最省事的做法**：工程根目录下的 **`lightpdf-linux-build-1.0.9.zip`**（0.6 MB）已经
-> 按上面的清单打好包（`.sh` 已转 LF）。拷它过去解压即用：
+> 💡 **最省事的做法**：本地工程根目录下的 **`lightpdf-linux-build-1.0.9.zip`**（约 1.1 MB，
+> 本地生成的离线源码快照，不随仓库分发）已经按上面的清单打好包（`.sh` 已转 LF）。拷它过去解压即用：
 > ```bash
 > unzip lightpdf-linux-build-1.0.9.zip -d ~/lightpdf && cd ~/lightpdf
 > bash packaging/linux/build-kylin.sh
