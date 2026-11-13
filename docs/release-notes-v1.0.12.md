@@ -79,4 +79,7 @@
   `lightpdf_1.0.12_arm64.deb`；离线源码快照 `lightpdf-linux-build-1.0.12.zip`（69 项，脚本已转 LF）
   已同步更新，源码内的 `app/version.py` 为 `1.0.12`。
 - UI 保持现状，未做任何视觉改动（用户 2026-11-13 确认）。
-- 本版目前为**本地提交**，尚未 push / 发布 GitHub Release。
+- 已推送到 GitHub `main`，并发布为 **v1.0.12 Latest Release**；离线源码快照同时作为 Release 资产提供，
+  方便在麒麟 aarch64 本机直接下载解压重建 `.deb`。
+
+**完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.9...v1.0.12
