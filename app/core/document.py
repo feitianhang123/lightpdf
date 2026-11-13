@@ -5,6 +5,8 @@ This module is deliberately Qt-free so it can be unit-tested and reused.
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
@@ -83,14 +85,29 @@ class PdfDocument:
 
     # ------------------------------------------------------------------ save
     def save(self, path: Optional[str] = None, *, incremental: bool = False) -> str:
+        """Save the document, including the common "save back to the opened
+        file" case.
+
+        MuPDF refuses a full rewrite onto the file a document is opened from
+        ("save to original must be incremental").  A plain incremental save is
+        not a universal answer either: after undo/redo the document is an
+        in-memory copy, which cannot be saved incrementally.  So in-place saves
+        serialize to bytes, write a sibling temporary file, close the old
+        handle (mandatory on Windows), atomically replace the target and reopen
+        it, keeping the session bound to the saved file.
+        """
         if self.doc is None:
             raise PdfError("No document open.")
         target = path or self.path
         if not target:
             raise PdfError("No output path given.")
         try:
-            if incremental and target == self.path:
-                self.doc.save(target, incremental=True, encryption=fitz.PDF_ENCRYPT_KEEP)
+            if self._is_current_file(target):
+                if incremental and self._can_save_incrementally(target):
+                    self.doc.save(target, incremental=True,
+                                  encryption=fitz.PDF_ENCRYPT_KEEP)
+                else:
+                    self._rewrite_current_file(target)
             else:
                 self.doc.save(target, garbage=3, deflate=True)
         except Exception as exc:  # noqa: BLE001
@@ -98,6 +115,77 @@ class PdfDocument:
         self.path = target
         self._dirty = False
         return target
+
+    @staticmethod
+    def _norm(path: str) -> str:
+        return os.path.normcase(os.path.abspath(path))
+
+    def _is_current_file(self, target: str) -> bool:
+        return bool(self.path) and self._norm(target) == self._norm(self.path)
+
+    def _can_save_incrementally(self, target: str) -> bool:
+        """Incremental saves only work while MuPDF still owns the real file."""
+        name = getattr(self.doc, "name", "") or ""
+        if not name or not os.path.isfile(name):
+            return False
+        if self._norm(name) != self._norm(target):
+            return False
+        try:
+            return bool(self.doc.can_save_incrementally())
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _rewrite_current_file(self, target: str) -> None:
+        data = self.doc.tobytes(garbage=3, deflate=True,
+                                encryption=fitz.PDF_ENCRYPT_KEEP)
+        directory = os.path.dirname(os.path.abspath(target))
+        tmp: Optional[str] = None
+        try:
+            fd, tmp = tempfile.mkstemp(prefix=".lightpdf-", suffix=".pdf",
+                                       dir=directory)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+        except OSError:
+            tmp = None  # fall back to overwriting the target directly
+
+        old = self.doc
+        self.doc = None
+        try:
+            old.close()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            if tmp:
+                try:
+                    os.replace(tmp, target)
+                    tmp = None
+                except OSError:
+                    # e.g. read-only attribute: keep the original file node
+                    shutil.copyfile(tmp, target)
+            else:
+                with open(target, "wb") as fh:
+                    fh.write(data)
+            reopened = fitz.open(target)
+            if reopened.needs_pass and self.password:
+                reopened.authenticate(self.password)
+            self.doc = reopened
+        except Exception:  # noqa: BLE001
+            # Never leave the editing session without a usable document.
+            if self.doc is None:
+                for factory in (lambda: fitz.open("pdf", data),
+                                lambda: fitz.open(target)):
+                    try:
+                        self.doc = factory()
+                        break
+                    except Exception:  # noqa: BLE001
+                        continue
+            raise
+        finally:
+            if tmp:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
 
     # ------------------------------------------------------------ snapshots
     def tobytes(self) -> bytes:

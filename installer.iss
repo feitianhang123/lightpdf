@@ -1,8 +1,8 @@
 ﻿[Setup]
 AppId={{B2F5D0E1-7A3C-4E9B-9C21-8F4A6D2E1B33}
 AppName=轻PDF编辑器
-AppVersion=1.0.9
-AppVerName=轻PDF编辑器 1.0.9
+AppVersion=1.0.10
+AppVerName=轻PDF编辑器 1.0.10
 AppPublisher=轻PDF编辑器
 DefaultDirName={autopf}\轻PDF编辑器
 DefaultGroupName=轻PDF编辑器

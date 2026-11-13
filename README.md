@@ -12,13 +12,13 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe` |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.9_arm64.deb` |
+| Windows（64 位） | `setup.exe`（v1.0.10） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.9_arm64.deb`（v1.0.9，历史包） |
 
-> 两个平台的安装包均为 **v1.0.9**，已随
-> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 一并发布，
-> 都包含图片 / 图章可编辑的改动。日后源码再更新时，`.deb` 仍需在麒麟 aarch64 本机
-> 用 `packaging/linux/build-kylin.sh` 重新构建。
+> Windows 安装包已更新为 **v1.0.10**，修复了「修改后保存回原文件失败」的问题。
+> 麒麟 `.deb` 目前仍是 **v1.0.9**，不含本次修复，需要在麒麟 aarch64 本机用
+> `packaging/linux/build-kylin.sh` 重新构建 `lightpdf_1.0.10_arm64.deb`。
+> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 保留为历史版本。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
@@ -65,7 +65,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.9_arm64.deb
+# 产物：dist/lightpdf_1.0.10_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -76,6 +76,18 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.10
+
+- **修复：修改文档后点「保存」弹出 `Save failed: save to original must be incremental`。**
+  - 根因：PyMuPDF（MuPDF）不允许把当前已打开的文件用「全量重写」方式存回原路径，
+    而「打开 PDF → 编辑 → Ctrl+S」走的正是这条路；撤销 / 重做之后文档变成内存副本，
+    连增量保存也不可用。
+  - 现在保存回原文件改为：内存序列化 → 同目录临时文件 → 释放旧文件句柄 → 原子替换 →
+    重新打开。仍保留 `garbage=3` 对象清理与 deflate 压缩，反复保存不会让文件越存越大；
+    保存后编辑会话继续绑定已保存的文件，已写入的图片 / 印章也还能重新点选调整。
+  - 另存为后继续保存、加密 PDF、中文 / 带空格路径、删页、保存失败时保护原文件等场景一并覆盖；
+    44 项回归断言全部通过。详见 [`docs/release-notes-v1.0.10.md`](docs/release-notes-v1.0.10.md)。
 
 ### 1.0.9
 
