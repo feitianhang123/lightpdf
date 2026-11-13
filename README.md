@@ -1,5 +1,7 @@
 # 轻PDF编辑器 (Light PDF Editor)
 
+> 语言 / Language：**简体中文** | [English](README.en.md)
+
 一个精简版、**净室实现**的 PDF 编辑器，参考主流 PDF 编辑软件的功能自行编写，基于开源组件
 **PyMuPDF (MuPDF)** + **PySide6 (Qt)**。支持中文 / English 界面。
 
