@@ -407,6 +407,218 @@ class InsertPagesDialog(QDialog):
         return self.after.value()
 
 
+def _parse_replace_pages(text: str, max_count: int, *, unique: bool = False):
+    """Parse ``1-3,5,8-10`` (1-based) into 0-based indices.
+
+    Returns ``(indices, dropped)``; ``dropped`` means a part was malformed or
+    out of range.  Source lists keep their order and duplicates (a source page
+    may be reused), while target lists are sorted and de-duplicated.
+    """
+    valid: list = []
+    dropped = False
+    for part in text.replace(" ", "").replace("，", ",").split(","):
+        if not part:
+            continue
+        if "-" in part:
+            a, b = part.split("-", 1)
+            if a.isdigit() and b.isdigit():
+                lo, hi = int(a), int(b)
+                if lo > hi:
+                    lo, hi = hi, lo
+                if lo < 1 or hi > max_count:
+                    dropped = True
+                for n in range(max(1, lo), min(hi, max_count) + 1):
+                    valid.append(n - 1)
+            else:
+                dropped = True
+        elif part.isdigit():
+            n = int(part)
+            if 1 <= n <= max_count:
+                valid.append(n - 1)
+            else:
+                dropped = True
+        else:
+            dropped = True
+    if unique:
+        valid = sorted(set(valid))
+    return valid, dropped
+
+
+class ReplacePagesDialog(QDialog):
+    """Replace the current page (or a page range) with pages from another PDF.
+
+    Target and source pages pair up in order, so their counts must match.  The
+    source page field defaults to ``1-N`` and follows the target selection
+    until the user edits it manually.  Everything is validated live so the
+    Replace button only becomes enabled for a valid operation.
+    """
+
+    def __init__(self, page_count: int, current_page: int, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(tr("dlg.replace.title"))
+        self.page_count = max(1, int(page_count))
+        self.current_page = min(max(0, int(current_page)), self.page_count - 1)
+        self._src_path = ""
+        self._src_pages = 0
+        self._src_error = ""
+        self._src_touched = False
+
+        self.scope = QComboBox()
+        self.scope.addItem(tr("dlg.replace.current", n=self.current_page + 1), "current")
+        self.scope.addItem(tr("dlg.replace.range"), "range")
+
+        self.target = QLineEdit(str(self.current_page + 1))
+        self.target.setPlaceholderText(tr("dlg.replace.target_pages"))
+        self.target.setEnabled(False)
+
+        self.source = QLineEdit()
+        self.source.setPlaceholderText(tr("dlg.replace.source_hint"))
+        browse = QPushButton(tr("dlg.replace.browse"))
+        browse.clicked.connect(self._browse)
+        src_row = QWidget()
+        src_lay = QHBoxLayout(src_row)
+        src_lay.setContentsMargins(0, 0, 0, 0)
+        src_lay.addWidget(self.source, 1)
+        src_lay.addWidget(browse)
+
+        self.src_pages = QLineEdit("1")
+        self.src_pages.setPlaceholderText(tr("dlg.replace.src_pages_hint"))
+
+        self.info = QLabel()
+        self.info.setWordWrap(True)
+        self.info.setStyleSheet("font-weight: bold;")
+        self.hint = QLabel(tr("dlg.replace.undo_hint"))
+        self.hint.setWordWrap(True)
+        self.hint.setObjectName("hintLabel")
+
+        form = QFormLayout(self)
+        form.addRow(tr("dlg.replace.target"), self.scope)
+        form.addRow("", self.target)
+        form.addRow(tr("dlg.replace.source"), src_row)
+        form.addRow(tr("dlg.replace.src_pages"), self.src_pages)
+        form.addRow(self.info)
+        form.addRow(self.hint)
+
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.ok_btn = bb.button(QDialogButtonBox.Ok)
+        self.ok_btn.setText(tr("dlg.replace.ok"))
+        bb.button(QDialogButtonBox.Cancel).setText(tr("btn.cancel"))
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        form.addRow(bb)
+
+        self.scope.currentIndexChanged.connect(lambda _: self._sync())
+        self.target.textChanged.connect(lambda _: self._on_target_changed())
+        self.source.textChanged.connect(lambda _: self._refresh())
+        self.src_pages.textChanged.connect(lambda _: self._on_src_pages_changed())
+
+        self.setMinimumWidth(430)
+        self._sync()
+
+    # ------------------------------------------------------------------ logic
+    def _sync(self) -> None:
+        on = self.scope.currentData() == "range"
+        self.target.setEnabled(on)
+        if on:
+            self.target.setFocus()
+            self.target.selectAll()
+        self._sync_source_default()
+
+    def _on_target_changed(self) -> None:
+        self._sync_source_default()
+
+    def _on_src_pages_changed(self) -> None:
+        self._src_touched = True
+        self._refresh()
+
+    def _sync_source_default(self) -> None:
+        if not self._src_touched:
+            n = len(self.target_indices())
+            text = "1" if n <= 1 else "1-%d" % n
+            if self.src_pages.text() != text:
+                self.src_pages.blockSignals(True)
+                self.src_pages.setText(text)
+                self.src_pages.blockSignals(False)
+        self._refresh()
+
+    def _browse(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, tr("dlg.replace.source"), "", "PDF (*.pdf)")
+        if path:
+            self.source.setText(path)
+
+    def _load_source(self) -> None:
+        """Open the source PDF once per distinct path to learn its page count."""
+        path = self.source.text().strip()
+        if path == self._src_path:
+            return
+        self._src_path = path
+        self._src_pages = 0
+        self._src_error = ""
+        if not path:
+            return
+        if not os.path.isfile(path):
+            self._src_error = "missing"
+            return
+        try:
+            probe = fitz.open(path)
+            try:
+                if probe.needs_pass:
+                    self._src_error = "locked"
+                else:
+                    self._src_pages = probe.page_count
+            finally:
+                probe.close()
+        except Exception:  # noqa: BLE001
+            self._src_error = "bad"
+
+    def target_indices(self) -> list:
+        if self.scope.currentData() == "range":
+            return _parse_replace_pages(
+                self.target.text(), self.page_count, unique=True)[0]
+        return [self.current_page]
+
+    def source_indices(self) -> list:
+        return _parse_replace_pages(self.src_pages.text(), max(1, self._src_pages))[0]
+
+    def source_path(self) -> str:
+        return self.source.text().strip()
+
+    def _set_state(self, msg: str, ok: bool) -> None:
+        self.info.setText(msg)
+        self.ok_btn.setEnabled(bool(ok))
+
+    def _refresh(self) -> None:
+        self._load_source()
+        t = self.target_indices()
+        t_dropped = False
+        if self.scope.currentData() == "range":
+            t_dropped = _parse_replace_pages(
+                self.target.text(), self.page_count, unique=True)[1]
+        if not t:
+            self._set_state(tr("dlg.replace.no_target"), False); return
+        if not self.source_path():
+            self._set_state(tr("dlg.replace.choose_source"), False); return
+        if self._src_error == "missing":
+            self._set_state(tr("dlg.replace.source_missing"), False); return
+        if self._src_error == "locked":
+            self._set_state(tr("dlg.replace.source_locked"), False); return
+        if self._src_error == "bad":
+            self._set_state(tr("dlg.replace.source_bad"), False); return
+        s, s_dropped = _parse_replace_pages(self.src_pages.text(), self._src_pages)
+        if not s:
+            self._set_state(tr("dlg.replace.no_src_pages"), False); return
+        if len(s) != len(t):
+            self._set_state(tr("dlg.replace.mismatch", a=len(t), b=len(s)), False)
+            return
+        pages = DeletePagesDialog._format_ranges(t)
+        src = ", ".join(str(i + 1) for i in s)
+        msg = tr("dlg.replace.summary", pages=pages, src=src)
+        if t_dropped or s_dropped:
+            msg += "  " + tr("dlg.delete.ignored")
+        self._set_state(msg, True)
+
+
 FONT_CHOICES = [("Times", "tiro"), ("Courier", "cour"), ("中文", "china-s")]
 
 

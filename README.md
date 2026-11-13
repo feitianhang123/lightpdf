@@ -12,12 +12,12 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.10） |
+| Windows（64 位） | `setup.exe`（v1.0.11） |
 | 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.9_arm64.deb`（v1.0.9，历史包） |
 
-> Windows 安装包已更新为 **v1.0.10**，修复了「修改后保存回原文件失败」的问题。
-> 麒麟 `.deb` 目前仍是 **v1.0.9**，不含本次修复，需要在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重新构建 `lightpdf_1.0.10_arm64.deb`。
+> Windows 安装包已更新为 **v1.0.11**：修复「修改后保存回原文件失败」，并在「页面」菜单新增
+> 「替换页面...」。麒麟 `.deb` 目前仍是 **v1.0.9**，不含这两版改动，需要在麒麟 aarch64 本机用
+> `packaging/linux/build-kylin.sh` 重新构建 `lightpdf_1.0.11_arm64.deb`。
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 保留为历史版本。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
@@ -76,6 +76,17 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.11
+
+- **新增：页面 → 替换页面...**，用另一个 PDF 的页面替换当前文档里的页面。
+  - 可替换**当前页**，也可用 `1-3,5,8-10` 一次指定**多个、不连续的页面**；源 PDF 页码同样支持范围，
+    默认自动填成 `1-N`，手动改过之后不再覆盖，同一源页可重复用于多个目标页。
+  - 目标页与源页按顺序一一对应，数量不等、页码越界、源文件加密 / 不存在时对话框实时提示并禁用「替换」。
+  - 替换后**总页数不变**，未涉及的页面、旋转角度与批注保持原样；原页面及其批注被移除，可用「撤销 / 重做」恢复。
+  - 效果图：[`15_替换页面.png`](docs/preview/15_替换页面.png)；
+    48 项回归断言全部通过，详见 [`docs/release-notes-v1.0.11.md`](docs/release-notes-v1.0.11.md)。
+  - 界面其余部分保持现状，未做任何视觉改动。
 
 ### 1.0.10
 

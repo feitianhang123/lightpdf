@@ -30,7 +30,8 @@ from .dialogs import (CompareWindow, DeletePagesDialog, HeaderFooterDialog,
                       ImagesToPdfDialog,
                       InsertPagesDialog, MarkupStyleDialog, MergeDialog,
                       ObjectPropertiesDialog, PageNumbersDialog, PrintDialog,
-                      PropertiesDialog, RidingStampDialog, RotateDialog,
+                      PropertiesDialog, ReplacePagesDialog, RidingStampDialog,
+                      RotateDialog,
                       SplitDialog, StampSettingsDialog, TextEditDialog,
                       WatermarkDialog)
 from .document_tab import DocumentTab
@@ -237,6 +238,7 @@ class MainWindow(QMainWindow):
         mk("annot.riding_stamp", self.do_riding_stamp, "stamp")
 
         mk("pages.insert", self.do_insert_pages, "open")
+        mk("pages.replace", self.do_replace_pages, "convert")
         mk("pages.delete", self.do_delete_page, "close")
         mk("pages.extract", self.do_extract_pages, "save")
         mk("pages.split", self.do_split, "convert")
@@ -319,8 +321,9 @@ class MainWindow(QMainWindow):
 
         self._menus["menu.pages"] = m.addMenu("")
         mp = self._menus["menu.pages"]
-        for k in ("pages.insert", "pages.delete", "pages.extract", "pages.split",
-                  "pages.merge", "pages.move_up", "pages.move_down"):
+        for k in ("pages.insert", "pages.replace", "pages.delete",
+                  "pages.extract", "pages.split", "pages.merge",
+                  "pages.move_up", "pages.move_down"):
             mp.addAction(self._actions[k])
         mp.addSeparator(); mp.addAction(self._actions["pages.rotate_all"])
         mp.addSeparator()
@@ -1022,6 +1025,29 @@ class MainWindow(QMainWindow):
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
         self._refresh_tab(tab)
+
+    def do_replace_pages(self) -> None:
+        """替换页面：用另一个 PDF 的页面替换当前页或指定多页（一一对应）。"""
+        tab = self._require_tab()
+        if not tab:
+            return
+        dlg = ReplacePagesDialog(tab.doc.page_count, tab.view.current_page(), self)
+        if not dlg.exec():
+            return
+        targets = dlg.target_indices()
+        sources = dlg.source_indices()
+        path = dlg.source_path()
+        if not targets or not sources or len(targets) != len(sources):
+            QMessageBox.warning(self, tr("msg.failed"), tr("msg.invalid_pages")); return
+        if not path or not os.path.isfile(path):
+            QMessageBox.warning(self, tr("msg.failed"), tr("msg.choose_source")); return
+        tab.push_undo()
+        try:
+            ops.replace_pages(tab.doc, targets, path, sources)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
+        self._refresh_tab(tab)
+        self.statusBar().showMessage(tr("msg.replaced", n=len(targets)), 5000)
 
     def do_extract_pages(self) -> None:
         tab = self._require_tab()

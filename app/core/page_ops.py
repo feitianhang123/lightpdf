@@ -126,6 +126,53 @@ def insert_pages_from(doc: PdfDocument, src_path: str, at_index: int,
     doc.mark_dirty()
 
 
+def replace_pages(doc: PdfDocument, target_indices: Sequence[int], src_path: str,
+                  src_indices: Sequence[int]) -> None:
+    """Replace pages of *doc* with pages copied from another PDF.
+
+    ``target_indices`` and ``src_indices`` are 0-based and positionally paired:
+    the k-th target page receives the k-th source page.  Each copy is inserted
+    immediately behind its target and the original is then deleted; processing
+    back-to-front keeps the remaining indices valid.  Page count and the order
+    of untouched pages are unchanged, and annotations / rotation survive.
+    A source page may be reused for several targets.
+    """
+    targets = [int(i) for i in target_indices]
+    sources = [int(i) for i in src_indices]
+    if not targets or not sources:
+        raise PdfError("No pages selected.")
+    if len(targets) != len(sources):
+        raise PdfError("Source and target page counts must match.")
+    if len(set(targets)) != len(targets):
+        raise PdfError("Target pages must be unique.")
+    if not os.path.isfile(src_path):
+        raise PdfError(f"Source PDF not found: {src_path}")
+    n = doc.page_count
+    if any(i < 0 or i >= n for i in targets):
+        raise PdfError("Target page out of range.")
+    try:
+        src = fitz.open(src_path)
+    except Exception as exc:  # noqa: BLE001
+        raise PdfError(f"Cannot open source PDF: {exc}") from exc
+    try:
+        if src.needs_pass:
+            raise PdfError("Source PDF is password protected.")
+        if any(i < 0 or i >= src.page_count for i in sources):
+            raise PdfError("Source page out of range.")
+        pairs = sorted(zip(targets, sources), key=lambda p: p[0])
+        for t, s in reversed(pairs):
+            doc.doc.insert_pdf(src, from_page=s, to_page=s,
+                               start_at=t + 1, annots=True)
+            doc.doc.delete_page(t)
+    except PdfError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise PdfError(f"Replace pages failed: {exc}") from exc
+    finally:
+        src.close()
+    doc.mark_dirty()
+
+
 # ------------------------------------------------------------------ watermark
 def add_watermark(doc: PdfDocument, text: str, *, fontsize: float = 48,
                   color: tuple = (0.6, 0.6, 0.6), opacity: float = 0.3,
