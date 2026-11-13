@@ -13,18 +13,18 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 | OS | File |
 |---|---|
 | Windows (64-bit) | `setup.exe` (v1.0.12) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.9_arm64.deb` (v1.0.9, legacy build) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.12_arm64.deb` (v1.0.12) |
 
-> The Windows installer is now **v1.0.12**: it fixes "saving changes back to the original file fails", adds **Page → Replace Pages...**, and supports **any combination of target and source page counts** (many → one, one → many, many → many).
-> The Kylin `.deb` is still **v1.0.9** and does not include these changes. It has to be rebuilt on a Kylin aarch64 machine with
-> `packaging/linux/build-kylin.sh` to produce `lightpdf_1.0.12_arm64.deb`.
-> The [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical version.
+> Both the Windows installer and the Kylin `.deb` are now **v1.0.12**: they fix "saving changes back to the original file fails", add **Page → Replace Pages...**, and support **any combination of target and source page counts** (many → one, one → many, many → many).
+> The Kylin package was built with `packaging/linux/build-kylin.sh` on an aarch64 machine and is published in the
+> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12). The `lightpdf_1.0.9_arm64.deb` in the
+> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.9_arm64.deb
+sudo dpkg -i lightpdf_1.0.12_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.

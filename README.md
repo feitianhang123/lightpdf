@@ -15,19 +15,20 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe`（v1.0.12） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.9_arm64.deb`（v1.0.9，历史包） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.12_arm64.deb`（v1.0.12） |
 
-> Windows 安装包已更新为 **v1.0.12**：修复「修改后保存回原文件失败」，新增「页面 → 替换页面...」，
+> Windows 安装包与麒麟 `.deb` 均已更新为 **v1.0.12**：修复「修改后保存回原文件失败」，新增「页面 → 替换页面...」，
 > 并支持**目标页与源页数量任意组合**（多页换一页、一页换多页、多页换多页）。
-> 麒麟 `.deb` 目前仍是 **v1.0.9**，不含这几版改动，需要在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重新构建 `lightpdf_1.0.12_arm64.deb`。
-> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 保留为历史版本。
+> 麒麟包由 aarch64 本机 `packaging/linux/build-kylin.sh` 构建，已随
+> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) 发布；
+> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
+> `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.9_arm64.deb
+sudo dpkg -i lightpdf_1.0.12_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。

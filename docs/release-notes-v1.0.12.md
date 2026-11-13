@@ -70,16 +70,24 @@
 | 文件 | 平台 | 大小（字节） | SHA-256 |
 |---|---|---|---|
 | `setup.exe` | Windows 64 位 | 94,181,870 | `b212a02ab838b6abcfed9297c91a31602117b8b4e75e7873cb401b1f2b7ca4e4` |
-| `lightpdf_1.0.12_arm64.deb` | 银河麒麟 / Linux aarch64 | 待构建 | 待构建 |
+| `lightpdf_1.0.12_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,259,536 | `5dce2be1d9b14f604d204cccf3c98f4caef7d3c54bb99efbe79c527d4be5f1de` |
 
 - `setup.exe` 已重打包为 **1.0.12**（内嵌 `dist\轻PDF编辑器.exe` 的 FileVersion / ProductVersion 均为
   `1.0.12`），包含上述功能以及 v1.0.10 / v1.0.11 的改动。
-- **麒麟 `.deb` 尚未重建**：仓库里现有的 `lightpdf_1.0.9_arm64.deb` 不含这三版改动。
-  需在麒麟 aarch64 本机执行 `bash packaging/linux/build-kylin.sh` 生成
-  `lightpdf_1.0.12_arm64.deb`；离线源码快照 `lightpdf-linux-build-1.0.12.zip`（69 项，脚本已转 LF）
-  已同步更新，源码内的 `app/version.py` 为 `1.0.12`。
+- **麒麟 `.deb` 已同步为 1.0.12**：`lightpdf_1.0.12_arm64.deb` 由麒麟 aarch64 本机执行
+  `bash packaging/linux/build-kylin.sh` 构建，control 元数据为 `Version: 1.0.12` / `Architecture: arm64`；
+  已解出内嵌程序核验：`app/version.py` 为 `1.0.12`，`app/core/page_ops.py` 含本版「整组替换」逻辑，
+  且不含旧的「页数必须相等」校验。安装：
+  ```bash
+  sudo dpkg -i lightpdf_1.0.12_arm64.deb
+  sudo apt-get -f install     # 若提示缺依赖，自动补齐
+  ```
+  该包已随 v1.0.12 Release 发布；仓库内 `lightpdf_1.0.9_arm64.deb` 与 v1.0.9 Release 保留为历史版本。
+- 离线源码快照 `lightpdf-linux-build-1.0.12.zip`（**源码，非安装包**）已同步更新，脚本已转 LF，
+  可在麒麟 aarch64 本机下载解压后自行 `bash packaging/linux/build-kylin.sh` 重新构建；
+  其校验值以 Release 资产页显示的 digest 为准。
 - UI 保持现状，未做任何视觉改动（用户 2026-11-13 确认）。
-- 已推送到 GitHub `main`，并发布为 **v1.0.12 Latest Release**；离线源码快照同时作为 Release 资产提供，
-  方便在麒麟 aarch64 本机直接下载解压重建 `.deb`。
+- 已推送到 GitHub `main`，并发布为 **v1.0.12 Latest Release**；Release 同时提供三个资产：
+  Windows 安装包、麒麟 `.deb`、离线源码快照。
 
 **完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.9...v1.0.12
