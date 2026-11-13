@@ -128,21 +128,29 @@ def insert_pages_from(doc: PdfDocument, src_path: str, at_index: int,
 
 def replace_pages(doc: PdfDocument, target_indices: Sequence[int], src_path: str,
                   src_indices: Sequence[int]) -> None:
-    """Replace pages of *doc* with pages copied from another PDF.
+    """Replace a group of pages with a group of pages from another PDF.
 
-    ``target_indices`` and ``src_indices`` are 0-based and positionally paired:
-    the k-th target page receives the k-th source page.  Each copy is inserted
-    immediately behind its target and the original is then deleted; processing
-    back-to-front keeps the remaining indices valid.  Page count and the order
-    of untouched pages are unchanged, and annotations / rotation survive.
-    A source page may be reused for several targets.
+    ``target_indices`` and ``src_indices`` are 0-based.  Their counts need not
+    match:
+
+    * Equal counts keep the original behaviour: the k-th target page receives
+      the k-th source page, at its own position.
+    * Different counts use a **group replacement**: all selected target pages
+      are deleted and the source pages are inserted as one ordered block at the
+      position of the first (smallest) target page.  Pages following the
+      replaced group keep their relative order and come after the inserted
+      block.
+
+    Either way the result has ``page_count - len(targets) + len(sources)``
+    pages.  Examples (1-based): replacing page 3 with source pages 1-3 grows
+    the document by 2 pages; replacing pages 3-5 with source page 2 shrinks it
+    by 2 pages.  Source pages may repeat or be out of order.  Untouched pages
+    keep their rotation and annotations; source pages are copied with annots.
     """
     targets = [int(i) for i in target_indices]
     sources = [int(i) for i in src_indices]
     if not targets or not sources:
         raise PdfError("No pages selected.")
-    if len(targets) != len(sources):
-        raise PdfError("Source and target page counts must match.")
     if len(set(targets)) != len(targets):
         raise PdfError("Target pages must be unique.")
     if not os.path.isfile(src_path):
@@ -159,11 +167,28 @@ def replace_pages(doc: PdfDocument, target_indices: Sequence[int], src_path: str
             raise PdfError("Source PDF is password protected.")
         if any(i < 0 or i >= src.page_count for i in sources):
             raise PdfError("Source page out of range.")
-        pairs = sorted(zip(targets, sources), key=lambda p: p[0])
-        for t, s in reversed(pairs):
-            doc.doc.insert_pdf(src, from_page=s, to_page=s,
-                               start_at=t + 1, annots=True)
-            doc.doc.delete_page(t)
+
+        if len(targets) == len(sources):
+            # Backwards-compatible positional pairing, back to front so the
+            # remaining indices stay valid.  Net page-count change is zero.
+            pairs = sorted(zip(targets, sources), key=lambda p: p[0])
+            for t, s in reversed(pairs):
+                doc.doc.insert_pdf(src, from_page=s, to_page=s,
+                                   start_at=t + 1, annots=True)
+                doc.doc.delete_page(t)
+        else:
+            first = min(targets)
+            block = len(sources)
+            # Insert the whole source block before the first target.  Each
+            # insert shifts the remaining original pages one slot to the
+            # right, so the next source page lands right behind the previous.
+            for offset, s in enumerate(sources):
+                doc.doc.insert_pdf(src, from_page=s, to_page=s,
+                                   start_at=first + offset, annots=True)
+            # Original targets now sit at index + len(sources).  Delete back
+            # to front so the not-yet-deleted indices stay valid.
+            for t in sorted(targets, reverse=True):
+                doc.doc.delete_page(t + block)
     except PdfError:
         raise
     except Exception as exc:  # noqa: BLE001

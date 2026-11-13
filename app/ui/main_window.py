@@ -1027,7 +1027,7 @@ class MainWindow(QMainWindow):
         self._refresh_tab(tab)
 
     def do_replace_pages(self) -> None:
-        """替换页面：用另一个 PDF 的页面替换当前页或指定多页（一一对应）。"""
+        """替换页面：删除所选目标页，把源 PDF 的所选页整组插到第一个目标页位置。"""
         tab = self._require_tab()
         if not tab:
             return
@@ -1037,17 +1037,24 @@ class MainWindow(QMainWindow):
         targets = dlg.target_indices()
         sources = dlg.source_indices()
         path = dlg.source_path()
-        if not targets or not sources or len(targets) != len(sources):
+        if not targets or not sources:
             QMessageBox.warning(self, tr("msg.failed"), tr("msg.invalid_pages")); return
         if not path or not os.path.isfile(path):
             QMessageBox.warning(self, tr("msg.failed"), tr("msg.choose_source")); return
+        old_total = tab.doc.page_count
         tab.push_undo()
         try:
             ops.replace_pages(tab.doc, targets, path, sources)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, tr("msg.failed"), str(exc)); return
+        # Page indices changed, so any still-registered overlay selections would
+        # point at the wrong page.  Baked images stay in the PDF and can be
+        # re-selected by clicking them.
+        tab.view.set_overlays([])
         self._refresh_tab(tab)
-        self.statusBar().showMessage(tr("msg.replaced", n=len(targets)), 5000)
+        self.statusBar().showMessage(
+            tr("msg.replaced", n=len(targets), old=old_total,
+               total=tab.doc.page_count), 5000)
 
     def do_extract_pages(self) -> None:
         tab = self._require_tab()

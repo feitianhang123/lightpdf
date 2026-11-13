@@ -447,8 +447,10 @@ def _parse_replace_pages(text: str, max_count: int, *, unique: bool = False):
 class ReplacePagesDialog(QDialog):
     """Replace the current page (or a page range) with pages from another PDF.
 
-    Target and source pages pair up in order, so their counts must match.  The
-    source page field defaults to ``1-N`` and follows the target selection
+    The two sides may contain any number of pages.  Equal counts pair up in
+    order; different counts remove all targets and insert the source pages as
+    one ordered block at the first target, so the total page count changes.
+    The source page field defaults to ``1-N`` and follows the target selection
     until the user edits it manually.  Everything is validated live so the
     Replace button only becomes enabled for a valid operation.
     """
@@ -608,12 +610,11 @@ class ReplacePagesDialog(QDialog):
         s, s_dropped = _parse_replace_pages(self.src_pages.text(), self._src_pages)
         if not s:
             self._set_state(tr("dlg.replace.no_src_pages"), False); return
-        if len(s) != len(t):
-            self._set_state(tr("dlg.replace.mismatch", a=len(t), b=len(s)), False)
-            return
         pages = DeletePagesDialog._format_ranges(t)
         src = ", ".join(str(i + 1) for i in s)
-        msg = tr("dlg.replace.summary", pages=pages, src=src)
+        total = self.page_count - len(t) + len(s)
+        msg = tr("dlg.replace.summary", pages=pages, src=src,
+                 a=len(t), b=len(s), old=self.page_count, total=total)
         if t_dropped or s_dropped:
             msg += "  " + tr("dlg.delete.ignored")
         self._set_state(msg, True)

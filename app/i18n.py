@@ -445,7 +445,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "msg.done": {"zh": "完成", "en": "Done"},
     "msg.choose_source": {"zh": "请选择源 PDF 文件。", "en": "Choose a source PDF file."},
     "msg.invalid_pages": {"zh": "页面范围无效。", "en": "Invalid page range."},
-    "msg.replaced": {"zh": "已替换 {n} 页", "en": "Replaced {n} page(s)"},
+    "msg.replaced": {"zh": "已替换 {n} 页（共 {old} → {total} 页）",
+                     "en": "Replaced {n} page(s) ({old} → {total} pages)"},
     "tab.untitled": {"zh": "未命名", "en": "Untitled"},
 
     # rotate dialog
@@ -502,18 +503,24 @@ STRINGS: dict[str, dict[str, str]] = {
                                 "en": "Choose another PDF file"},
     "dlg.replace.browse": {"zh": "浏览...", "en": "Browse..."},
     "dlg.replace.src_pages": {"zh": "源 PDF 的页面", "en": "Source pages"},
-    "dlg.replace.src_pages_hint": {"zh": "如 1-3,5；可重复同一页",
-                                   "en": "e.g. 1-3,5; a page may repeat"},
+    "dlg.replace.src_pages_hint": {"zh": "如 1-3,5；页数可与目标页不同，可重复同一页",
+                                   "en": "e.g. 1-3,5; count may differ from the target; a page may repeat"},
     "dlg.replace.ok": {"zh": "替换", "en": "Replace"},
     "dlg.replace.undo_hint": {
-        "zh": "按顺序一一对应：第 1 个目标页用第 1 个源页替换。原页面及其批注会被移除，"
-              "总页数不变，可用「撤销」恢复。",
-        "en": "Pages pair up in order: the first target uses the first source page. "
-              "Original pages and their annotations are removed, the page count stays "
-              "the same, and you can undo.",
+        "zh": "规则：两侧页数相同时按顺序逐页对应；页数不同时，删掉所选目标页，把源 PDF 的所选页"
+              "按输入顺序整组插到第一个目标页的位置，其后的页面依次顺延。"
+              "总页数 = 原页数 − 目标页数 + 源页数；被替换页及其批注会移除，"
+              "源 PDF 只读，可用「撤销」恢复。",
+        "en": "Rule: when the counts match, pages pair up in order; otherwise all target pages "
+              "are removed and the chosen source pages are inserted as one ordered block at the "
+              "first target's position, with later pages following. Total pages = original − "
+              "targets + sources. Replaced pages and their annotations are removed, the source "
+              "PDF is read-only, and you can undo.",
     },
-    "dlg.replace.summary": {"zh": "将替换第 {pages} 页 ← 源 PDF 第 {src} 页",
-                            "en": "Replace page(s) {pages} with source page(s) {src}"},
+    "dlg.replace.summary": {
+        "zh": "第 {pages} 页（{a} 页）← 源 PDF 第 {src} 页（{b} 页）；总页数 {old} → {total}",
+        "en": "Page(s) {pages} ({a}) ← source page(s) {src} ({b}); total pages {old} → {total}",
+    },
     "dlg.replace.no_target": {"zh": "请输入要替换的页面范围。",
                               "en": "Enter the pages to replace."},
     "dlg.replace.choose_source": {"zh": "请选择用来替换的 PDF 文件。",
@@ -526,10 +533,6 @@ STRINGS: dict[str, dict[str, str]] = {
                                "en": "Cannot open the source PDF."},
     "dlg.replace.no_src_pages": {"zh": "请输入源 PDF 的页码。",
                                  "en": "Enter source page numbers."},
-    "dlg.replace.mismatch": {
-        "zh": "页数不一致：要替换 {a} 页，源 PDF 选了 {b} 页。",
-        "en": "Page counts differ: {a} to replace, {b} selected in source.",
-    },
 }
 
 
