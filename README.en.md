@@ -13,19 +13,18 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 | OS | File |
 |---|---|
 | Windows (64-bit) | `setup.exe` (v1.0.14) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.12_arm64.deb` (v1.0.12) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.14_arm64.deb` (v1.0.14) |
 
-> The Windows installer is now **v1.0.14**: highlight, underline and strikeout are "vertically forgiving, horizontally precise" -- no need to outline the full line height, but the mark spans exactly as far as you drag (in CJK text, only the characters you sweep over are marked).
-> The Kylin `.deb` is still **v1.0.12** (without this change). Rebuild `lightpdf_1.0.14_arm64.deb` on a Kylin aarch64 machine with
-> `packaging/linux/build-kylin.sh`.
-> The [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) is the latest published version. The
+> Both the Windows installer and the Kylin `.deb` are now **v1.0.14**: highlight, underline and strikeout are "vertically forgiving, horizontally precise" -- no need to outline the full line height, but the mark spans exactly as far as you drag (in CJK text, only the characters you sweep over are marked).
+> This release also includes v1.0.13's "swipe to mark" behavior and v1.0.12's arbitrary page-count combinations for Replace Pages.
+> Both installers are published in the [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) and ready to install. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.12_arm64.deb
+sudo dpkg -i lightpdf_1.0.14_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -66,7 +65,7 @@ ISCC.exe installer.iss                    # produces 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # one command: install system deps if needed, then build
-# output: dist/lightpdf_1.0.12_arm64.deb
+# output: dist/lightpdf_1.0.14_arm64.deb
 ```
 
 For an offline transfer, **source only (~0.6 MB)** is needed: `app/`, `run_app.py`, `requirements.txt`, `icon.ico`,

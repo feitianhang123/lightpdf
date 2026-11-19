@@ -47,14 +47,21 @@ v1.0.14 改用 `page.get_text("rawdict")` 的**字符级**坐标来判定横向�
 | 文件 | 平台 | 大小（字节） | SHA-256 |
 |---|---|---|---|
 | `setup.exe` | Windows 64 位 | 94,183,345 | `87e6f8a7de0a18df1aab7000443e4de578b2669899bb5e76c774821a75ab7519` |
-| `lightpdf_1.0.14_arm64.deb` | 银河麒麟 / Linux aarch64 | 待构建 | 待构建 |
+| `lightpdf_1.0.14_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,252,016 | `b212ebbc1c87a57b233d7acd6659ce8c0bef693e9e8f6f3d7ab1ec0193d8f4f9` |
 
 - `setup.exe` 已用 Python 3.10 + PyInstaller + Inno Setup 7 重新打包，内嵌主程序版本资源
   `FileVersion` / `ProductVersion` 均为 `1.0.14`；已从冻结程序字节码核验
   `app.ui.pdf_view._handle_tool_release` 引用 `words_for_markup`，且该函数含 `rawdict` 字符级逻辑。
-- **麒麟 `.deb` 尚未重建**：现有 `lightpdf_1.0.12_arm64.deb` 不含本版改动。需在麒麟 aarch64 本机
-  下载离线源码快照并运行 `bash packaging/linux/build-kylin.sh` 生成 `lightpdf_1.0.14_arm64.deb`。
-- 离线源码快照 `lightpdf-linux-build-1.0.14.zip`（**源码，非安装包**）随本版更新。
-- 当前为**本地提交**，尚未 push / 发布 GitHub Release（等用户确认）。
+- **麒麟 `.deb` 已随本版发布**：`lightpdf_1.0.14_arm64.deb` 的 control 元数据为
+  `Version: 1.0.14 / Architecture: arm64`；解出内嵌 PyInstaller 程序后确认 `app/version.py` 为
+  `1.0.14`、`words_for_markup` 含 `rawdict` / `chars` 字符级逻辑、`_handle_tool_release` 引用该函数，
+  且不含旧版「页数必须相等」的替换限制——是名副其实的 v1.0.14，不是旧包改名。安装：
+  ```bash
+  sudo dpkg -i lightpdf_1.0.14_arm64.deb
+  sudo apt-get -f install     # 若提示缺依赖，自动补齐
+  ```
+- 离线源码快照 `lightpdf-linux-build-1.0.14.zip`（**源码，非安装包**）随本版作为 Release 资产提供，
+  供需要在麒麟 aarch64 本机自行重建 `.deb` 的用户下载。
+- 已推送到 GitHub `main`，并发布为 **v1.0.14 Latest Release**。
 
 **完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.12...v1.0.14

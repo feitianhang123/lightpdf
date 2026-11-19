@@ -15,13 +15,12 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe`（v1.0.14） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.12_arm64.deb`（v1.0.12） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.14_arm64.deb`（v1.0.14） |
 
-> Windows 安装包已更新为 **v1.0.14**：高亮 / 下划线 / 删除线改为「**纵向宽松、横向精确**」——
+> Windows 安装包与麒麟 `.deb` 均已更新为 **v1.0.14**：高亮 / 下划线 / 删除线改为「**纵向宽松、横向精确**」——
 > 不用框住整行高度，但**画多长就标多长**：中文画到第几个字就标到第几个字，英文可标到半个单词。
-> 麒麟 `.deb` 目前仍是 **v1.0.12**（不含本版改动），需在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.14_arm64.deb`。
-> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) 为当前最新版本；
+> 本版还包含 v1.0.13「划过即命中」与 v1.0.12「替换页面任意页数组合」等改动。
+> 两个安装包均已随 [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) 发布，可直接下载安装；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 
@@ -29,7 +28,7 @@
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.12_arm64.deb
+sudo dpkg -i lightpdf_1.0.14_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -70,7 +69,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.12_arm64.deb
+# 产物：dist/lightpdf_1.0.14_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
