@@ -998,9 +998,13 @@ class PdfView(QGraphicsView):
                 self.invalidate_page(index)
         elif t in ("highlight", "underline", "strikeout"):
             r = QRectF(dp0, dp_end).normalized()
-            if r.width() > 2 and r.height() > 2:
-                words = self.doc.page(index).get_text("words", clip=self.page_to_pdf_rect(index, r))
-                rects = [fitz.Rect(w[:4]) for w in words]
+            pr = self.page_to_pdf_rect(index, r)
+            # Markups are forgiving: a shallow swipe across a line is enough,
+            # the drag box does not have to contain the words.  Selection is
+            # snapped to whole lines/words with a small tolerance in the core
+            # helper so unrelated text is never touched.
+            if max(pr.width, pr.height) > 3:
+                rects = annot.words_for_markup(self.doc.page(index), pr)
                 if rects:
                     color, opacity = self.markup_style(t)
                     self.aboutToModify.emit()

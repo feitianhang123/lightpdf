@@ -14,13 +14,14 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.12） |
+| Windows（64 位） | `setup.exe`（v1.0.13） |
 | 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.12_arm64.deb`（v1.0.12） |
 
-> Windows 安装包与麒麟 `.deb` 均已更新为 **v1.0.12**：修复「修改后保存回原文件失败」，新增「页面 → 替换页面...」，
-> 并支持**目标页与源页数量任意组合**（多页换一页、一页换多页、多页换多页）。
-> 麒麟包由 aarch64 本机 `packaging/linux/build-kylin.sh` 构建，已随
-> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) 发布；
+> Windows 安装包已更新为 **v1.0.13**：高亮 / 下划线 / 删除线改为「划过即命中 + 整行吸附」，
+> 不再需要逐字精确框选，框外的文字也不会被误标。
+> 麒麟 `.deb` 目前仍是 **v1.0.12**（不含本版改动），需在麒麟 aarch64 本机用
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.13_arm64.deb`。
+> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) 为当前最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 
@@ -80,6 +81,16 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.13
+
+- **高亮 / 下划线 / 删除线不再需要精确框选**。标记框只要「划过」要标记的文字即可：
+  - **整行吸附**：框的上下范围碰到某一行即命中该行；横向划一条细线也能标记整行，不必框住整行高度。
+  - **相交即命中**：词只要被框碰到（含 2pt 容差）就会被标记，不用把每个词完整框住。
+  - **不会乱画**：只标记命中行内、与框横向相交的词；行外、列外、空白处的文字完全不受影响。
+  - 三种标记行为一致；界面配色、布局、工具栏未做任何改动。
+  - 31 项回归断言全部通过（含扁框、框偏、只框到词的一部分、跨行 / 跨列、旋转页、空白页、三种批注类型）；
+    详见 [`docs/release-notes-v1.0.13.md`](docs/release-notes-v1.0.13.md)。
 
 ### 1.0.12
 

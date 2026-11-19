@@ -12,13 +12,14 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.12) |
+| Windows (64-bit) | `setup.exe` (v1.0.13) |
 | Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.12_arm64.deb` (v1.0.12) |
 
-> Both the Windows installer and the Kylin `.deb` are now **v1.0.12**: they fix "saving changes back to the original file fails", add **Page → Replace Pages...**, and support **any combination of target and source page counts** (many → one, one → many, many → many).
-> The Kylin package was built with `packaging/linux/build-kylin.sh` on an aarch64 machine and is published in the
-> [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12). The `lightpdf_1.0.9_arm64.deb` in the
-> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
+> The Windows installer is now **v1.0.13**: highlight, underline and strikeout use "swipe to select + line snapping", so you no longer need to outline each word precisely, and text outside the swipe is never marked.
+> The Kylin `.deb` is still **v1.0.12** (without this change). Rebuild `lightpdf_1.0.13_arm64.deb` on a Kylin aarch64 machine with
+> `packaging/linux/build-kylin.sh`.
+> The [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) is the latest published version. The
+> `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
@@ -79,6 +80,16 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.13
+
+- **Highlight / underline / strikeout no longer need a precise box.** Simply swipe across the text you want to mark:
+  - **Line snapping**: if the box touches a text line vertically, that line is hit. A thin horizontal swipe across a line is enough -- no need to outline the line's full height.
+  - **Overlap counts**: a word is marked as soon as the box touches it (with a 2 pt tolerance); you no longer have to enclose every word.
+  - **No random scribbles**: only words on hit lines that overlap the box horizontally are marked; other lines, columns and blank margins are untouched.
+  - All three markup tools behave the same; colors, layout and toolbars are unchanged.
+  - 31 regression assertions pass (shallow / off-target / partial boxes, multi-line and multi-column, rotated pages, blank pages, all three annotation subtypes).
+    See [`docs/release-notes-v1.0.13.md`](docs/release-notes-v1.0.13.md).
 
 ### 1.0.12
 

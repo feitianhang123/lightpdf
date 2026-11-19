@@ -30,6 +30,50 @@ MARKUP_KINDS = {
 }
 
 
+def words_for_markup(page, rect, *, pad_x: float = 2.0,
+                     pad_y: float = 1.5) -> List[fitz.Rect]:
+    """Return word rectangles for highlight / underline / strikeout.
+
+    ``page.get_text("words", clip=rect)`` keeps only words *fully enclosed* by
+    the dragged box, which forces the user to trace every word precisely.
+    This helper is deliberately forgiving but still bounded:
+
+    * the dragged box is padded by ``pad_x`` / ``pad_y`` (PDF points);
+    * words are grouped into text lines, and a line is hit when its vertical
+      span overlaps the padded box -- a shallow horizontal swipe across a line
+      is enough, there is no need to outline the line's full height;
+    * on a hit line, every word overlapping the padded horizontal span is
+      marked, so nearby words are picked up without pixel-perfect dragging.
+
+    Nothing outside the padded box is touched: other lines, other columns and
+    blank margins are never marked, so the result cannot degenerate into random
+    scribbles.  ``rect`` and the returned rectangles are in unrotated PDF page
+    coordinates -- the same space ``page.get_text`` returns.
+    """
+    box = fitz.Rect(rect)
+    hit = fitz.Rect(box.x0 - pad_x, box.y0 - pad_y,
+                    box.x1 + pad_x, box.y1 + pad_y)
+    words = page.get_text("words")
+    if not words:
+        return []
+    lines: dict = {}
+    for w in words:
+        key = (w[5], w[6]) if len(w) > 6 else (0, round(float(w[1])))
+        lines.setdefault(key, []).append(w)
+
+    out: List[fitz.Rect] = []
+    for ws in lines.values():
+        top = min(float(w[1]) for w in ws)
+        bottom = max(float(w[3]) for w in ws)
+        if bottom < hit.y0 or top > hit.y1:      # no vertical overlap at all
+            continue
+        for w in ws:
+            x0, x1 = float(w[0]), float(w[2])
+            if x1 >= hit.x0 and x0 <= hit.x1:    # horizontal overlap (padded)
+                out.append(fitz.Rect(x0, float(w[1]), x1, float(w[3])))
+    return out
+
+
 def add_markup(doc: PdfDocument, page_index: int, kind: str, rects: Sequence[fitz.Rect],
                color: Color = (1, 1, 0), opacity: float = 0.3) -> None:
     if kind not in MARKUP_KINDS:
