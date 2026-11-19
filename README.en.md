@@ -12,11 +12,11 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.13) |
+| Windows (64-bit) | `setup.exe` (v1.0.14) |
 | Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.12_arm64.deb` (v1.0.12) |
 
-> The Windows installer is now **v1.0.13**: highlight, underline and strikeout use "swipe to select + line snapping", so you no longer need to outline each word precisely, and text outside the swipe is never marked.
-> The Kylin `.deb` is still **v1.0.12** (without this change). Rebuild `lightpdf_1.0.13_arm64.deb` on a Kylin aarch64 machine with
+> The Windows installer is now **v1.0.14**: highlight, underline and strikeout are "vertically forgiving, horizontally precise" -- no need to outline the full line height, but the mark spans exactly as far as you drag (in CJK text, only the characters you sweep over are marked).
+> The Kylin `.deb` is still **v1.0.12** (without this change). Rebuild `lightpdf_1.0.14_arm64.deb` on a Kylin aarch64 machine with
 > `packaging/linux/build-kylin.sh`.
 > The [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) is the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
@@ -80,6 +80,15 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.14
+
+- **Highlight / underline / strikeout: the horizontal span is now precise** (fixes v1.0.13 marking whole lines).
+  - **Mark exactly what you sweep**: selection granularity drops from word to character, so in CJK text only the characters you drag over are marked -- no more whole-line marking (a whole Chinese sentence used to be one "word" to PyMuPDF, the root cause).
+  - **Vertical stays forgiving**: no need to cover the line's full height; a thin swipe or a box slightly above/below the line still hits.
+  - Adjacent selected characters merge into one continuous highlight; text outside the span, other lines and columns are untouched.
+  - 21 regression assertions pass (CJK by character count, English by letter, shallow swipes, row boundaries, all three annotation subtypes).
+    See [`docs/release-notes-v1.0.14.md`](docs/release-notes-v1.0.14.md).
 
 ### 1.0.13
 

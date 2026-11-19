@@ -14,13 +14,13 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.13） |
+| Windows（64 位） | `setup.exe`（v1.0.14） |
 | 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.12_arm64.deb`（v1.0.12） |
 
-> Windows 安装包已更新为 **v1.0.13**：高亮 / 下划线 / 删除线改为「划过即命中 + 整行吸附」，
-> 不再需要逐字精确框选，框外的文字也不会被误标。
+> Windows 安装包已更新为 **v1.0.14**：高亮 / 下划线 / 删除线改为「**纵向宽松、横向精确**」——
+> 不用框住整行高度，但**画多长就标多长**：中文画到第几个字就标到第几个字，英文可标到半个单词。
 > 麒麟 `.deb` 目前仍是 **v1.0.12**（不含本版改动），需在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.13_arm64.deb`。
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.14_arm64.deb`。
 > [v1.0.12 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.12) 为当前最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
@@ -81,6 +81,16 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.14
+
+- **高亮 / 下划线 / 删除线：横向改为精确选区**（修正 v1.0.13 标整行的问题）。
+  - **画多长标多长**：选词粒度从「词」降到「字符」，中文画到第几个字就标到第几个字，
+    不再一动就标整行（中文里整句原本被当成一个词，是标整行的根因）。
+  - **纵向仍宽松**：不用框住整行高度，横向划一条细线、框偏到行的上下缘都能命中。
+  - 相邻被选中的字合并成一条连续高亮，不会碎成一堆小块；框外、行外、列外的文字不受影响。
+  - 21 项回归断言全部通过（中文按字数、英文按字母、细线、跨行边界、三种批注类型）；
+    详见 [`docs/release-notes-v1.0.14.md`](docs/release-notes-v1.0.14.md)。
 
 ### 1.0.13
 

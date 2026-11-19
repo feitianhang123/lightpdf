@@ -30,47 +30,55 @@ MARKUP_KINDS = {
 }
 
 
-def words_for_markup(page, rect, *, pad_x: float = 2.0,
+def words_for_markup(page, rect, *, pad_x: float = 0.5,
                      pad_y: float = 1.5) -> List[fitz.Rect]:
-    """Return word rectangles for highlight / underline / strikeout.
+    """Return text rectangles for highlight / underline / strikeout.
 
-    ``page.get_text("words", clip=rect)`` keeps only words *fully enclosed* by
-    the dragged box, which forces the user to trace every word precisely.
-    This helper is deliberately forgiving but still bounded:
+    Selection is deliberately forgiving in one direction and precise in the
+    other:
 
-    * the dragged box is padded by ``pad_x`` / ``pad_y`` (PDF points);
-    * words are grouped into text lines, and a line is hit when its vertical
-      span overlaps the padded box -- a shallow horizontal swipe across a line
-      is enough, there is no need to outline the line's full height;
-    * on a hit line, every word overlapping the padded horizontal span is
-      marked, so nearby words are picked up without pixel-perfect dragging.
+    * **Vertical (forgiving)**: text is grouped into lines, and a line is hit
+      when its vertical span overlaps the dragged box (padded by ``pad_y``).
+      A shallow horizontal swipe is enough -- the box does not have to cover
+      the line's full height.
+    * **Horizontal (precise)**: only the characters actually swept over are
+      marked, i.e. the highlight spans exactly as far as the drag.  Character
+      granularity matters for CJK text, where a whole sentence is a single
+      ``word`` to PyMuPDF -- word-level selection would mark the entire line.
+      ``pad_x`` adds a tiny tolerance so the edges need not be pixel-perfect.
 
-    Nothing outside the padded box is touched: other lines, other columns and
-    blank margins are never marked, so the result cannot degenerate into random
-    scribbles.  ``rect`` and the returned rectangles are in unrotated PDF page
-    coordinates -- the same space ``page.get_text`` returns.
+    Selected characters that touch each other are merged into one rectangle,
+    so the result is a continuous highlight instead of one block per glyph.
+    Nothing outside the dragged span is touched: other lines, other columns
+    and blank margins are never marked.  ``rect`` and the returned rectangles
+    are in unrotated PDF page coordinates (the space ``page.get_text`` uses).
     """
     box = fitz.Rect(rect)
     hit = fitz.Rect(box.x0 - pad_x, box.y0 - pad_y,
                     box.x1 + pad_x, box.y1 + pad_y)
-    words = page.get_text("words")
-    if not words:
-        return []
-    lines: dict = {}
-    for w in words:
-        key = (w[5], w[6]) if len(w) > 6 else (0, round(float(w[1])))
-        lines.setdefault(key, []).append(w)
-
+    raw = page.get_text("rawdict")
     out: List[fitz.Rect] = []
-    for ws in lines.values():
-        top = min(float(w[1]) for w in ws)
-        bottom = max(float(w[3]) for w in ws)
-        if bottom < hit.y0 or top > hit.y1:      # no vertical overlap at all
-            continue
-        for w in ws:
-            x0, x1 = float(w[0]), float(w[2])
-            if x1 >= hit.x0 and x0 <= hit.x1:    # horizontal overlap (padded)
-                out.append(fitz.Rect(x0, float(w[1]), x1, float(w[3])))
+    for block in raw.get("blocks", []):
+        for line in block.get("lines", []):
+            lb = fitz.Rect(line["bbox"])
+            if lb.y1 < hit.y0 or lb.y0 > hit.y1:   # vertical: line snapping
+                continue
+            chosen = []
+            for span in line.get("spans", []):
+                for ch in span.get("chars", []):
+                    cb = fitz.Rect(ch["bbox"])
+                    if cb.x1 >= hit.x0 and cb.x0 <= hit.x1:   # horizontal: swept span
+                        chosen.append(cb)
+            # merge touching characters into continuous runs
+            for r in sorted(chosen, key=lambda q: q.x0):
+                if out:
+                    prev = out[-1]
+                    if (abs(prev.y0 - r.y0) < 2 and abs(prev.y1 - r.y1) < 2
+                            and r.x0 <= prev.x1 + 2.0):
+                        out[-1] = fitz.Rect(prev.x0, min(prev.y0, r.y0),
+                                            max(prev.x1, r.x1), max(prev.y1, r.y1))
+                        continue
+                out.append(fitz.Rect(r))
     return out
 
 
