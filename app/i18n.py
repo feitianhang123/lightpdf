@@ -372,7 +372,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "print.nup.order.vr": {"zh": "垂直反转", "en": "Vertical Reversed"},
     "print.nup.border": {"zh": "打印页面边框", "en": "Print page border"},
     "print.duplex.both": {"zh": "在纸张双面打印", "en": "Print on both sides of paper"},
-    "print.autorotate": {"zh": "自动旋转", "en": "Auto-&Rotate"},
+    "print.autorotate": {"zh": "旋转内容适配纸张", "en": "Rotate content to fit paper"},
     "print.autocenter": {"zh": "自动居中", "en": "Auto-Center"},
     "print.what": {"zh": "打印内容", "en": "Print &What"},
     "print.what.doc": {"zh": "文档", "en": "Document"},

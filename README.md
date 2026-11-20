@@ -14,13 +14,14 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.14） |
+| Windows（64 位） | `setup.exe`（v1.0.15） |
 | 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.14_arm64.deb`（v1.0.14） |
 
-> Windows 安装包与麒麟 `.deb` 均已更新为 **v1.0.14**：高亮 / 下划线 / 删除线改为「**纵向宽松、横向精确**」——
-> 不用框住整行高度，但**画多长就标多长**：中文画到第几个字就标到第几个字，英文可标到半个单词。
-> 本版还包含 v1.0.13「划过即命中」与 v1.0.12「替换页面任意页数组合」等改动。
-> 两个安装包均已随 [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) 发布，可直接下载安装；
+> Windows 安装包已更新为 **v1.0.15**：修复打印时「方向」选项会把发票等横向内容也跟着转成竖向的问题——
+> 现在**方向只改变纸张，内容保持正向**并等比缩放居中；需要内容旋转铺满时可勾选「旋转内容适配纸张」。
+> 麒麟 `.deb` 目前仍是 **v1.0.14**（不含本版改动），需在麒麟 aarch64 本机用
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.15_arm64.deb`。
+> [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) 为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 
@@ -69,7 +70,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.14_arm64.deb
+# 产物：dist/lightpdf_1.0.15_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -80,6 +81,16 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.15
+
+- **修复打印方向：发票等横向内容不再跟着纸张旋转**。
+  - 「方向」下拉（自动 / 纵向 / 横向）现在只改变 **A4 纸张方向**，页面内容保持原来的方向、等比缩放居中；
+    选纵向时横向发票会缩小放在纸中间（四周留白、字仍是正的），不再被强行转 90°。
+  - 需要把内容旋转到铺满纸张时，勾选新增的「旋转内容适配纸张」（默认关闭）。
+  - 打印预览与实际输出使用同一套逻辑，所见即所得。
+  - 18 项回归断言全部通过（横向 / 竖向源文件 × 三种方向、勾选旋转的旧行为、纸张标签）；
+    详见 [`docs/release-notes-v1.0.15.md`](docs/release-notes-v1.0.15.md)。
 
 ### 1.0.14
 

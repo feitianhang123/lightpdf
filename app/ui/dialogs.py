@@ -1111,7 +1111,9 @@ class PrintDialog(QDialog):
             self.flip_group.addButton(b)
             dv.addWidget(b)
         self.autorotate_check = QCheckBox(tr("print.autorotate"))
-        self.autorotate_check.setChecked(True)
+        # 默认关闭：方向选项只决定纸张形状，内容保持原方向、等比缩放居中。
+        # 勾选后才把内容旋转到与纸张一致（老行为，适合需要铺满整张纸的场景）。
+        self.autorotate_check.setChecked(False)
         self.autocenter_check = QCheckBox(tr("print.autocenter"))
         self.autocenter_check.setChecked(True)
         dv.addWidget(self.autorotate_check)
@@ -1179,6 +1181,7 @@ class PrintDialog(QDialog):
         for w in (self.subset_combo, self.nup_combo, self.nup_order):
             w.currentIndexChanged.connect(self._update_preview)
         self.orient_combo.currentIndexChanged.connect(self._update_preview)
+        self.autorotate_check.toggled.connect(self._update_preview)
         # 打印内容下拉 与 印章复选框 互为镜像（见 _sync_what / _on_signature_toggled）
         self.what_combo.currentIndexChanged.connect(self._sync_what)
         self.signature_check.toggled.connect(self._on_signature_toggled)
@@ -1397,7 +1400,20 @@ class PrintDialog(QDialog):
                       QImage.Format_RGB888).copy()
 
     def _maybe_autorotate(self, img: QImage) -> QImage:
-        if self.autorotate_check.isChecked() and img.width() > img.height():
+        """Rotate content only when the user opted to match it to the paper.
+
+        Default (checkbox unchecked): the orientation combo changes the sheet
+        only; content keeps its original direction and is scaled to fit, so a
+        landscape invoice stays upright on portrait A4 with margins.
+
+        Checked: keep the legacy behaviour of turning a sideways page 90°
+        so the content fills a sheet of the selected orientation.
+        """
+        if not self.autorotate_check.isChecked():
+            return img
+        paper_land = self._landscape()
+        content_land = img.width() > img.height()
+        if paper_land != content_land:
             return img.transformed(QTransform().rotate(90))
         return img
 
@@ -1532,9 +1548,8 @@ class PrintDialog(QDialog):
         elif kind == "nup_side":
             content = self._render_nup_side(cur, annots)
         else:
-            content = self._render_qimage(cur[0], 1.5, annots)
-            if self._landscape():
-                content = content.transformed(QTransform().rotate(90))
+            content = self._maybe_autorotate(
+                self._render_qimage(cur[0], 1.5, annots))
         self._preview_base = QPixmap.fromImage(self._paper_canvas(content))
         self._rescale_preview()
 

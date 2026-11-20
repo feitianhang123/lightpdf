@@ -12,12 +12,13 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.14) |
+| Windows (64-bit) | `setup.exe` (v1.0.15) |
 | Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.14_arm64.deb` (v1.0.14) |
 
-> Both the Windows installer and the Kylin `.deb` are now **v1.0.14**: highlight, underline and strikeout are "vertically forgiving, horizontally precise" -- no need to outline the full line height, but the mark spans exactly as far as you drag (in CJK text, only the characters you sweep over are marked).
-> This release also includes v1.0.13's "swipe to mark" behavior and v1.0.12's arbitrary page-count combinations for Replace Pages.
-> Both installers are published in the [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) and ready to install. The
+> The Windows installer is now **v1.0.15**: printing's Orientation option no longer rotates the page content along with the paper (a sideways invoice used to be turned 90° no matter which orientation you picked). Now orientation changes the **sheet only**, while content keeps its original direction and is scaled to fit with margins. Opt into the old "rotate content to fit paper" behaviour with the new checkbox (off by default).
+> The Kylin `.deb` is still **v1.0.14** (without this change). Rebuild `lightpdf_1.0.15_arm64.deb` on a Kylin aarch64 machine with
+> `packaging/linux/build-kylin.sh`.
+> The [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) is the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
@@ -65,7 +66,7 @@ ISCC.exe installer.iss                    # produces 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # one command: install system deps if needed, then build
-# output: dist/lightpdf_1.0.14_arm64.deb
+# output: dist/lightpdf_1.0.15_arm64.deb
 ```
 
 For an offline transfer, **source only (~0.6 MB)** is needed: `app/`, `run_app.py`, `requirements.txt`, `icon.ico`,
@@ -79,6 +80,15 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.15
+
+- **Printing: orientation no longer rotates the page content** (a landscape invoice used to be turned sideways whatever orientation you chose).
+  - The Orientation dropdown now changes the **paper** only; content keeps its original direction and is scaled to fit, centered. On portrait A4 a landscape invoice becomes smaller with margins, but stays upright.
+  - To rotate content to fill the sheet like before, check the new "Rotate content to fit paper" option (off by default).
+  - The print preview and the actual output share the same logic, so what you see is what you get.
+  - 18 regression assertions pass (landscape / portrait sources × three orientations, opt-in rotation, paper labels).
+    See [`docs/release-notes-v1.0.15.md`](docs/release-notes-v1.0.15.md).
 
 ### 1.0.14
 
