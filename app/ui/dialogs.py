@@ -760,6 +760,10 @@ class PrintDialog(QDialog):
     """
 
     PREVIEW_BG = "#8FB69A"       # 预览底色（浅绿，沿用原工程风格）
+    # 预览渲染用的固定倍率：1.5 px/pt = 108 px/inch。纸张按 A4 真实比例绘制，
+    # 于是「实际大小 / 自定义比例」在预览里可以按物理尺寸表达，而不只是填满纸。
+    PREVIEW_ZOOM = 1.5
+    PREVIEW_PAPER_LONG = 1200    # 预览纸张长边像素；短边按 A4 比例换算
 
     def __init__(self, doc, current_page: int, parent=None) -> None:
         super().__init__(parent)
@@ -1545,12 +1549,16 @@ class PrintDialog(QDialog):
         cur = items[self._preview_index]
         if kind == "d_side":
             content = self._render_d_side(cur, annots)
+            render_zoom = 1.2
         elif kind == "nup_side":
             content = self._render_nup_side(cur, annots)
+            render_zoom = 0.8
         else:
+            render_zoom = self.PREVIEW_ZOOM
             content = self._maybe_autorotate(
-                self._render_qimage(cur[0], 1.5, annots))
-        self._preview_base = QPixmap.fromImage(self._paper_canvas(content))
+                self._render_qimage(cur[0], render_zoom, annots))
+        self._preview_base = QPixmap.fromImage(
+            self._paper_canvas(content, render_zoom * 72.0))
         self._rescale_preview()
 
     def _sync_meta_labels(self) -> None:
@@ -1568,31 +1576,29 @@ class PrintDialog(QDialog):
         # 此处显示纸张「尺寸」而非纸张名称
         return "11.7 x 8.3 in" if self._landscape() else "8.3 x 11.7 in"
 
-    def _paper_canvas(self, content: QImage) -> QImage:
-        """把 content 画在一张**真实比例**的纸上 —— 保证「预览 == 实际输出」。
+    def _paper_canvas(self, content: QImage, content_ppi: float) -> QImage:
+        """把 content 画在固定尺寸的 A4 纸面上 —— 保证「预览 == 实际输出」。
 
-        要害：纸面宽高比只由**纸张方向**决定，**绝不随内容拉伸**。内容按比例缩放并居中，
-        内容比例与纸面不同时会出现白边 —— 这正是实际打印出来的样子（此前的 bug 是
-        用 max(sw, 内容宽) 把纸面撑成了内容的形状，于是 2 页并排时预览变成横向）。
+        纸张宽高比只由**纸张方向**决定，且纸面尺寸固定，不随内容拉伸；内容按当前
+        缩放模式（适合 / 缩小过大 / 实际大小 / 自定义比例）算出在纸上的矩形。这样
+        选 50% 时内容真的只占半张纸，而不是又被放大去填满纸面。
+        content_ppi：内容图的像素/英寸（预览渲染倍率 × 72）。
         """
         land = self._landscape()
-        ar = (297.0 / 210.0) if land else (210.0 / 297.0)      # A4 宽/高
-        cw, ch = max(1, content.width()), max(1, content.height())
-        if cw / ch >= ar:          # 内容比纸“宽” → 以内容宽定纸宽
-            sw = int(cw * 1.04)
-            sh = int(round(sw / ar))
-        else:                      # 内容比纸“高” → 以内容高定纸高
-            sh = int(ch * 1.04)
-            sw = int(round(sh * ar))
-        sw, sh = max(sw, 40), max(sh, 40)
-        gut = 16
+        long_side = self.PREVIEW_PAPER_LONG
+        short_side = int(round(long_side * 210.0 / 297.0))
+        sw, sh = (long_side, short_side) if land else (short_side, long_side)
+        gut = 20
         canvas = QImage(sw + 2 * gut, sh + 2 * gut, QImage.Format_RGB888)
         canvas.fill(QColor(self.PREVIEW_BG))
+        paper_ppi = long_side / (297.0 / 25.4)     # A4 长边 11.69 in
         p = QPainter(canvas)
         p.fillRect(gut, gut, sw, sh, Qt.white)
         p.setPen(QColor("#4E7D57"))
         p.drawRect(gut, gut, sw - 1, sh - 1)
-        r = self._fit_rect(cw, ch, sw, sh)                     # 等比缩放居中
+        r = self._scale_rect(content.width(), content.height(), sw, sh,
+                             content_ppi=content_ppi, paper_ppi=paper_ppi)
+        p.setRenderHint(QPainter.SmoothPixmapTransform, True)
         p.drawImage(QRectF(gut + r.x(), gut + r.y(), r.width(), r.height()), content)
         p.end()
         return canvas
@@ -1660,6 +1666,40 @@ class PrintDialog(QDialog):
             return QRectF(0, 0, aw, ah)
         s = min(aw / iw, ah / ih)
         return QRectF((aw - iw * s) / 2, (ah - ih * s) / 2, iw * s, ih * s)
+
+    def _custom_percent(self) -> float:
+        """自定义比例；空/非法输入回退 100%，限制 1%~1000%。"""
+        try:
+            return max(1, min(1000, int(self.custom_edit.text().strip()))) / 100.0
+        except (ValueError, AttributeError):
+            return 1.0
+
+    def _scale_rect(self, iw: int, ih: int, pw: int, ph: int, *,
+                    content_ppi: float, paper_ppi: float) -> QRectF:
+        """按当前缩放模式计算内容在纸面上的矩形（预览与打印共用）。
+
+        以「适合纸张」的矩形为 100% 基准：自定义 50% 就是纸面可打印范围的
+        一半，允许 >100% 超出纸面（超出部分自然裁切）。「实际大小 / 缩小过大
+        页面」按物理英寸换算，因此需要两侧的 px-per-inch。
+        """
+        iw, ih, pw, ph = max(1, iw), max(1, ih), max(1, pw), max(1, ph)
+        fit = self._fit_rect(iw, ih, pw, ph)
+        mode = self._scale_mode()
+        if mode == "custom":
+            pct = self._custom_percent()
+            w, h = fit.width() * pct, fit.height() * pct
+            return QRectF((pw - w) / 2, (ph - h) / 2, w, h)
+        content_ppi = max(1.0, float(content_ppi or 1.0))
+        paper_ppi = max(1.0, float(paper_ppi or 1.0))
+        real_w = iw * paper_ppi / content_ppi
+        real_h = ih * paper_ppi / content_ppi
+        if mode == "none":
+            return QRectF((pw - real_w) / 2, (ph - real_h) / 2, real_w, real_h)
+        if mode == "reduce" and real_w <= pw and real_h <= ph:
+            if self.autocenter_check.isChecked():
+                return QRectF((pw - real_w) / 2, (ph - real_h) / 2, real_w, real_h)
+            return QRectF(0, 0, real_w, real_h)
+        return fit
 
     def _scale_mode(self) -> str:
         if self.s_none.isChecked():
@@ -1787,40 +1827,34 @@ class PrintDialog(QDialog):
         img = self._render_qimage(pno, dpi / 72.0, annots)
         return self._to_gray(img) if self.gray_check.isChecked() else img
 
-    def _draw_scaled(self, painter, img: QImage) -> None:
+    def _draw_scaled(self, painter, img: QImage, dpi: int, printer_dpi: float) -> None:
+        """按当前缩放模式把内容画到纸张上；与打印预览共用 _scale_rect。"""
         vp = painter.viewport()
-        mode = self._scale_mode()
-        if mode == "none":
-            painter.drawImage(0, 0, img)
+        r = self._scale_rect(img.width(), img.height(), vp.width(), vp.height(),
+                             content_ppi=float(dpi), paper_ppi=float(printer_dpi))
+        if r.width() <= 0 or r.height() <= 0:
             return
-        if mode == "custom":
-            try:
-                pct = max(1, min(1000, int(self.custom_edit.text()))) / 100.0
-            except ValueError:
-                pct = 1.0
-            w = int(img.width() * pct)
-            h = int(img.height() * pct)
-            painter.drawImage(self._fit_rect(w, h, vp.width(), vp.height()),
-                              img.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            return
-        if mode == "reduce" and img.width() <= vp.width() and img.height() <= vp.height():
-            if self.autocenter_check.isChecked():
-                painter.drawImage(self._fit_rect(img.width(), img.height(),
-                                                 vp.width(), vp.height()), img)
-            else:
-                painter.drawImage(0, 0, img)
-            return
-        painter.drawImage(self._fit_rect(img.width(), img.height(),
-                                         vp.width(), vp.height()), img)
+        # 用画布变换代替放大生成临时大图：自定义比例 >100% 时不会爆内存，
+        # 超出纸面的部分由打印设备自然裁切。
+        painter.save()
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.translate(r.x(), r.y())
+        painter.scale(r.width() / img.width(), r.height() / img.height())
+        painter.drawImage(0, 0, img)
+        painter.restore()
 
     def _print_plain(self, painter, printer, pages, dpi: int, annots: bool) -> None:
         first = True
+        try:
+            printer_dpi = float(printer.resolution()) or float(dpi)
+        except Exception:  # noqa: BLE001
+            printer_dpi = float(dpi)
         for pno in pages:
             if not first:
                 printer.newPage()
             first = False
             img = self._maybe_autorotate(self._page_image(pno, dpi, annots))
-            self._draw_scaled(painter, img)
+            self._draw_scaled(painter, img, dpi, printer_dpi)
             if self.bleed_check.isChecked():
                 self._draw_bleed_marks(painter, painter.viewport())
 

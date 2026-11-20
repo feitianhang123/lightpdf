@@ -14,13 +14,14 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.15） |
+| Windows（64 位） | `setup.exe`（v1.0.16） |
 | 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.14_arm64.deb`（v1.0.14） |
 
-> Windows 安装包已更新为 **v1.0.15**：修复打印时「方向」选项会把发票等横向内容也跟着转成竖向的问题——
-> 现在**方向只改变纸张，内容保持正向**并等比缩放居中；需要内容旋转铺满时可勾选「旋转内容适配纸张」。
+> Windows 安装包已更新为 **v1.0.16**：修复打印时「自定义比例」不生效的问题——选 50% 时内容真的只占半张纸，
+> 预览与实际输出使用同一套缩放计算；「适合 / 缩小过大 / 实际大小 / 自定义%」现在都能在预览里看出区别。
+> v1.0.15 的修复继续保留：**方向只改变纸张，内容保持正向**；需要内容旋转铺满时可勾选「旋转内容适配纸张」。
 > 麒麟 `.deb` 目前仍是 **v1.0.14**（不含本版改动），需在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.15_arm64.deb`。
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.16_arm64.deb`。
 > [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) 为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
@@ -70,7 +71,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.15_arm64.deb
+# 产物：dist/lightpdf_1.0.16_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -81,6 +82,15 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.16
+
+- **修复打印缩放：自定义比例现在真正生效**。
+  - 预览里新增按当前缩放模式计算内容在纸张上的矩形：选「自定义 50%」时内容缩为半张纸，
+    不再无条件放大到铺满整页；「实际大小 / 缩小过大页面」按物理英寸换算，所见即所得。
+  - 打印端同步修正：旧逻辑先把图缩小、随后又被「适合纸张」放大回去；现在预览与打印输出
+    共用同一个矩形，50% 在导出的 PDF 里也只占约半张纸。
+  - 用横向发票逐项验证：适合 1200px → 50% 600px → 200% 2400px；打印到 PDF 实测内容宽度约 48.9%（页边距所致）。
 
 ### 1.0.15
 

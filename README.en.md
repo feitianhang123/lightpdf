@@ -12,11 +12,12 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.15) |
+| Windows (64-bit) | `setup.exe` (v1.0.16) |
 | Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.14_arm64.deb` (v1.0.14) |
 
-> The Windows installer is now **v1.0.15**: printing's Orientation option no longer rotates the page content along with the paper (a sideways invoice used to be turned 90° no matter which orientation you picked). Now orientation changes the **sheet only**, while content keeps its original direction and is scaled to fit with margins. Opt into the old "rotate content to fit paper" behaviour with the new checkbox (off by default).
-> The Kylin `.deb` is still **v1.0.14** (without this change). Rebuild `lightpdf_1.0.15_arm64.deb` on a Kylin aarch64 machine with
+> The Windows installer is now **v1.0.16**: printing's Custom Scale finally works. At 50% the content really occupies half the sheet in both the preview and the printed output (the old code shrank the image and then enlarged it back to fill the page). Fit / Shrink / Actual size / Custom % all share one calculation, so the preview matches the result.
+> The v1.0.15 fix is retained: orientation changes the **sheet only**, while content keeps its original direction. Opt into "rotate content to fit paper" with the checkbox (off by default).
+> The Kylin `.deb` is still **v1.0.14** (without these changes). Rebuild `lightpdf_1.0.16_arm64.deb` on a Kylin aarch64 machine with
 > `packaging/linux/build-kylin.sh`.
 > The [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) is the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
@@ -66,7 +67,7 @@ ISCC.exe installer.iss                    # produces 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # one command: install system deps if needed, then build
-# output: dist/lightpdf_1.0.15_arm64.deb
+# output: dist/lightpdf_1.0.16_arm64.deb
 ```
 
 For an offline transfer, **source only (~0.6 MB)** is needed: `app/`, `run_app.py`, `requirements.txt`, `icon.ico`,
@@ -80,6 +81,13 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.16
+
+- **Printing: Custom Scale now really scales the sheet content.**
+  - The preview computes the content rectangle from the active scale mode, so 50% means half of the sheet instead of a page-filling image. "Actual size" / "Shrink oversized pages" use physical inch measurements.
+  - The print path had the same bug: it scaled the image down and then re-fitted it to the page. Both preview and output now use the same rectangle.
+  - Verified with a landscape invoice: fit 1200 px → 50% 600 px → 200% 2400 px; a print-to-PDF run measures about 48.9% of the page width (printer margins).
 
 ### 1.0.15
 
