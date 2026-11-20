@@ -13,20 +13,23 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 | OS | File |
 |---|---|
 | Windows (64-bit) | `setup.exe` (v1.0.16) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.14_arm64.deb` (v1.0.14) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16) |
 
-> The Windows installer is now **v1.0.16**: printing's Custom Scale finally works. At 50% the content really occupies half the sheet in both the preview and the printed output (the old code shrank the image and then enlarged it back to fill the page). Fit / Shrink / Actual size / Custom % all share one calculation, so the preview matches the result.
+> **v1.0.16 is published**: Windows and Kylin installers are both at the same version.
+> On Windows, printing's Custom Scale finally works: at 50% the content really occupies half the sheet in both the preview and the printed output (the old code shrank the image and then enlarged it back to fill the page). Fit / Shrink / Actual size / Custom % all share one calculation, so the preview matches the result.
 > The v1.0.15 fix is retained: orientation changes the **sheet only**, while content keeps its original direction. Opt into "rotate content to fit paper" with the checkbox (off by default).
-> The Kylin `.deb` is still **v1.0.14** (without these changes). Rebuild `lightpdf_1.0.16_arm64.deb` on a Kylin aarch64 machine with
-> `packaging/linux/build-kylin.sh`.
-> The [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) is the latest published version. The
+> The Kylin `.deb` was rebuilt by the user on an aarch64 machine with `packaging/linux/build-kylin.sh` and includes all v1.0.15 / v1.0.16 changes.
+> The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) is the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
+>
+> SHA-256: `setup.exe` `9f6de7f803fe9ada2700999bcff60164a22d63d7f86e7ca07bcbd6095939e225`;
+> `lightpdf_1.0.16_arm64.deb` `e6ade90f5226828e653a45fa4e0851107a389ea44184e3ca5e2f1c06eaeee415`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.14_arm64.deb
+sudo dpkg -i lightpdf_1.0.16_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.

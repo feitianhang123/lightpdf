@@ -52,13 +52,16 @@ v1.0.15 的「旋转内容适配纸张」复选框保持默认关闭。
 | 文件 | 平台 | 大小（字节） | SHA-256 |
 |---|---|---|---|
 | `setup.exe` | Windows 64 位 | 94,185,533 | `9f6de7f803fe9ada2700999bcff60164a22d63d7f86e7ca07bcbd6095939e225` |
-| `lightpdf_1.0.16_arm64.deb` | 银河麒麟 / Linux aarch64 | 待构建 | 待构建 |
+| `lightpdf_1.0.16_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,266,868 | `e6ade90f5226828e653a45fa4e0851107a389ea44184e3ca5e2f1c06eaeee415` |
+| `lightpdf-linux-build-1.0.16.zip` | 麒麟本机离线构建用源码快照 | 1,267,607 | `8ae1abc186ea487bc677692dc3acf35e6638f671c04ede6f9ef49c837ab374bd` |
 
 - `setup.exe` 用 Python 3.10 + PyInstaller 6.22.3 + Inno Setup 7 重新打包。
-- **麒麟 `.deb` 尚未重建**：现有 `lightpdf_1.0.14_arm64.deb` 不含 v1.0.15 / v1.0.16 改动。
-  需在麒麟 aarch64 本机下载离线源码快照并运行 `bash packaging/linux/build-kylin.sh`
-  生成 `lightpdf_1.0.16_arm64.deb`。
-- 离线源码快照 `lightpdf-linux-build-1.0.16.zip`（**源码，非安装包**）随本版更新。
-- 当前为**本地提交**，尚未 push / 发布 GitHub Release（等用户确认）。
+- 麒麟 `.deb` 由用户在 aarch64 本机用 `bash packaging/linux/build-kylin.sh` 重建。
+  已解包核验：`control` 为 `Version: 1.0.16 / Architecture: arm64`，内嵌程序含本版
+  `_scale_rect` / `_custom_percent` 缩放逻辑与 v1.0.15 的 `_maybe_autorotate` 方向修复，
+  确认不是旧包改名。
+- `lightpdf-linux-build-1.0.16.zip` 为**源码快照，非安装包**，供麒麟本机离线构建。
+- 三资产已随 [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 发布，
+  该版本为当前 Latest。
 
 **完整改动**：https://github.com/feitianhang123/lightpdf/compare/v1.0.15...v1.0.16

@@ -15,22 +15,25 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe`（v1.0.16） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.14_arm64.deb`（v1.0.14） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16） |
 
-> Windows 安装包已更新为 **v1.0.16**：修复打印时「自定义比例」不生效的问题——选 50% 时内容真的只占半张纸，
+> **v1.0.16 已发布**：Windows 与麒麟双平台安装包均已更新到同一版本。
+> Windows 端修复打印时「自定义比例」不生效的问题——选 50% 时内容真的只占半张纸，
 > 预览与实际输出使用同一套缩放计算；「适合 / 缩小过大 / 实际大小 / 自定义%」现在都能在预览里看出区别。
 > v1.0.15 的修复继续保留：**方向只改变纸张，内容保持正向**；需要内容旋转铺满时可勾选「旋转内容适配纸张」。
-> 麒麟 `.deb` 目前仍是 **v1.0.14**（不含本版改动），需在麒麟 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.16_arm64.deb`。
-> [v1.0.14 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.14) 为当前已发布的最新版本；
+> 麒麟 `.deb` 已由用户在 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建，含 v1.0.15 / v1.0.16 全部改动。
+> [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
+>
+> 校验值（SHA-256）：`setup.exe` `9f6de7f803fe9ada2700999bcff60164a22d63d7f86e7ca07bcbd6095939e225`；
+> `lightpdf_1.0.16_arm64.deb` `e6ade90f5226828e653a45fa4e0851107a389ea44184e3ca5e2f1c06eaeee415`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.14_arm64.deb
+sudo dpkg -i lightpdf_1.0.16_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
