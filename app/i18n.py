@@ -228,6 +228,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "zh": "也可直接在页面上操作：拖动移动、拖动八个控制点缩放（按住 Shift 自由缩放）、方向键微调（Shift 加速）、Delete 删除。",
         "en": "On the page: drag to move, drag any of the eight handles to resize (hold Shift for free resize), arrow keys to nudge (Shift for bigger steps), Delete to remove.",
     },
+    "dlg.object.riding_hint": {
+        "zh": "这是骑缝章的一个切片：水平位置已锁定、不能缩放，以保证各页叠起来能拼成完整印章。只能用上下方向键或这里的 Y 值调整高度，同一枚章的所有页会同步移动。",
+        "en": "This is one slice of a riding seal. Its horizontal position is locked and resizing is disabled so the pages still reassemble into one complete seal. Only the vertical position can change (arrow keys or Y below), and every page of the same seal moves together.",
+    },
     "dlg.object.kind_image": {"zh": "图片", "en": "image"},
     "dlg.object.kind_stamp": {"zh": "图章", "en": "stamp"},
     "msg.object_inserted": {

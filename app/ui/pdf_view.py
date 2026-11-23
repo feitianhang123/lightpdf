@@ -379,9 +379,15 @@ class PdfView(QGraphicsView):
                     idx, handle = obj
                     self._selected = idx
                     self._img_snapshot = False
-                    self._img_drag = {"index": idx, "handle": handle, "page": index,
-                                      "start": QPointF(dp),
-                                      "rect": fitz.Rect(self.pending_images[idx]["rect"])}
+                    drag = {"index": idx, "handle": handle, "page": index,
+                            "start": QPointF(dp),
+                            "rect": fitz.Rect(self.pending_images[idx]["rect"])}
+                    im = self.pending_images[idx]
+                    if im.get("riding_group") is not None:
+                        baked = im.get("baked") or {}
+                        drag["riding_last_dy"] = 0.0
+                        drag["riding_skip_xref"] = int(baked.get("xref") or 0)
+                    self._img_drag = drag
                     self._rebuild_pending_items()
                     self.viewport().setCursor(self._cursor_for(handle))
                     event.accept()
@@ -431,14 +437,25 @@ class PdfView(QGraphicsView):
                     self.materialize_overlay(idx, push=False)
                 dp = hit[1]
                 r0 = d["rect"]
+                gid = self.pending_images[idx].get("riding_group")
                 if d["handle"] is None:
                     dx = dp.x() - d["start"].x()
                     dy = dp.y() - d["start"].y()
+                    if gid is not None:
+                        # A riding-stamp slice is locked to its page edge:
+                        # only the vertical offset is editable, and every
+                        # other slice of the same seal must follow it.
+                        dx = 0.0
+                        self._sync_riding_group(idx, gid, dy, d)
                     new = fitz.Rect(r0.x0 + dx, r0.y0 + dy, r0.x1 + dx, r0.y1 + dy)
                 else:
-                    keep = not bool(event.modifiers() & Qt.ShiftModifier)
-                    new = self._resized_rect(r0, d["handle"],
-                                             fitz.Point(dp.x(), dp.y()), keep)
+                    if gid is not None:
+                        # Resizing one slice would break the reassembled seal.
+                        new = fitz.Rect(r0)
+                    else:
+                        keep = not bool(event.modifiers() & Qt.ShiftModifier)
+                        new = self._resized_rect(r0, d["handle"],
+                                                 fitz.Point(dp.x(), dp.y()), keep)
                 self.pending_images[idx]["rect"] = self._clamp_display_rect(d["page"], new)
                 self._rebuild_pending_items()
             event.accept()
@@ -525,7 +542,8 @@ class PdfView(QGraphicsView):
     # ------------------------------------------------------- editable overlays
     def add_pending_image(self, page: int, rect, source, *, kind: str = "image",
                           rotate: int = 0, baked: Optional[dict] = None,
-                          select: bool = True) -> int:
+                          select: bool = True, riding_group: Optional[int] = None,
+                          riding_slot: int = 0) -> int:
         """Add an image/stamp as a movable, resizable overlay.
 
         ``rect`` is in *display* page coordinates (what the user sees); it is
@@ -537,6 +555,7 @@ class PdfView(QGraphicsView):
             "page": int(page), "rect": fitz.Rect(rect), "source": source,
             "item": None, "kind": kind, "rotate": int(rotate or 0),
             "baked": baked,
+            "riding_group": riding_group, "riding_slot": int(riding_slot),
         })
         idx = len(self.pending_images) - 1
         if select:
@@ -559,7 +578,9 @@ class PdfView(QGraphicsView):
             out.append({"page": im["page"], "rect": fitz.Rect(im["rect"]),
                         "source": im["source"], "item": None,
                         "kind": im.get("kind", "image"),
-                        "rotate": im.get("rotate", 0), "baked": copy})
+                        "rotate": im.get("rotate", 0), "baked": copy,
+                        "riding_group": im.get("riding_group"),
+                        "riding_slot": im.get("riding_slot", 0)})
         return out
 
     def set_overlays(self, items: List[dict]) -> None:
@@ -576,7 +597,8 @@ class PdfView(QGraphicsView):
         im = self.pending_images[self._selected]
         return {"index": self._selected, "page": im["page"],
                 "rect": fitz.Rect(im["rect"]), "kind": im.get("kind", "image"),
-                "baked": im.get("baked") is not None}
+                "baked": im.get("baked") is not None,
+                "riding_group": im.get("riding_group")}
 
     def _pixmap_for(self, source) -> QPixmap:
         pm = QPixmap()
@@ -634,16 +656,19 @@ class PdfView(QGraphicsView):
         frame = QGraphicsRectItem(QRectF(x, y, w, h))
         frame.setPen(pen); frame.setZValue(9)
         self._scene.addItem(frame); self._frame_items.append(frame)
-        for _name, (px, py) in self._handle_points(r).items():
-            sx, sy = g.x + px * self.zoom, g.y + py * self.zoom
-            hp = QPen(SEL_COLOR); hp.setWidth(1)
-            handle = QGraphicsRectItem(QRectF(sx - HANDLE_SIZE / 2,
-                                              sy - HANDLE_SIZE / 2,
-                                              HANDLE_SIZE, HANDLE_SIZE))
-            handle.setPen(hp)
-            handle.setBrush(QBrush(QColor(255, 255, 255)))
-            handle.setZValue(10)
-            self._scene.addItem(handle); self._frame_items.append(handle)
+        # Riding slices are edge-locked and size-locked: show no resize handles
+        # so the UI doesn't suggest an edit that would break the assembled seal.
+        if im.get("riding_group") is None:
+            for _name, (px, py) in self._handle_points(r).items():
+                sx, sy = g.x + px * self.zoom, g.y + py * self.zoom
+                hp = QPen(SEL_COLOR); hp.setWidth(1)
+                handle = QGraphicsRectItem(QRectF(sx - HANDLE_SIZE / 2,
+                                                  sy - HANDLE_SIZE / 2,
+                                                  HANDLE_SIZE, HANDLE_SIZE))
+                handle.setPen(hp)
+                handle.setBrush(QBrush(QColor(255, 255, 255)))
+                handle.setZValue(10)
+                self._scene.addItem(handle); self._frame_items.append(handle)
         label = QGraphicsSimpleTextItem(f"{r.width:.0f} x {r.height:.0f} pt")
         label.setBrush(QBrush(SEL_COLOR))
         br = label.boundingRect()
@@ -699,8 +724,16 @@ class PdfView(QGraphicsView):
             try:
                 page = self.doc.page(im["page"])
                 pdf_rect = fitz.Rect(im["rect"]) * page.derotation_matrix
-                ed.insert_image_bytes(self.doc, im["page"], pdf_rect, im["source"],
-                                      rotate=im.get("rotate") or 0)
+                xref = ed.insert_image_bytes(self.doc, im["page"], pdf_rect,
+                                             im["source"],
+                                             rotate=im.get("rotate") or 0)
+                # Re-apply the riding-stamp group tag: baking a loose overlay
+                # creates a new xref, so the link must be written again or the
+                # slices would no longer move as one seal after saving.
+                if xref and im.get("riding_group") is not None:
+                    annot.tag_riding_slice(self.doc, xref,
+                                           im["riding_group"],
+                                           im.get("riding_slot", 0))
             except Exception:  # noqa: BLE001
                 pass
         self.doc.mark_dirty()
@@ -735,7 +768,7 @@ class PdfView(QGraphicsView):
             outer = fitz.Rect(r.x0 - tol, r.y0 - tol, r.x1 + tol, r.y1 + tol)
             if not outer.contains(p):
                 continue
-            if i == self._selected:
+            if i == self._selected and im.get("riding_group") is None:
                 for name, (cx, cy) in self._handle_points(r).items():
                     if abs(p.x - cx) <= tol and abs(p.y - cy) <= tol:
                         return i, name
@@ -772,8 +805,14 @@ class PdfView(QGraphicsView):
         display_rect = fitz.Rect(best["bbox"]) * pg.rotation_matrix
         baked = {"xref": best["xref"], "bbox": fitz.Rect(best["bbox"]),
                  "rotate": best["rotate"], "objects": objects}
+        # A riding-stamp slice carries a persistent group tag.  Remember it so
+        # editing can lock its horizontal position and move every slice of the
+        # same seal together (otherwise reassembling the seal would break).
+        gid = annot.riding_group_at(self.doc, best["xref"])
+        slot = annot.riding_slot_at(self.doc, best["xref"]) if gid is not None else 0
         idx = self.add_pending_image(page, display_rect, data, kind="image",
-                                     rotate=best["rotate"], baked=baked, select=True)
+                                     rotate=best["rotate"], baked=baked, select=True,
+                                     riding_group=gid, riding_slot=slot)
         self.statusMessage.emit(tr("msg.object_selected"))
         return idx, None
 
@@ -812,6 +851,75 @@ class PdfView(QGraphicsView):
         self._rebuild_pending_items()
         self.overlayChanged.emit()
         return True
+
+    def _sync_riding_group(self, idx: int, gid: int, dy: float, drag: dict) -> None:
+        """Move every *other* slice of the same seal by the same vertical step.
+
+        ``dy`` is the cumulative offset from the drag start; we apply only the
+        difference since the previous move so repeated mouseMove events don't
+        accumulate.  Baked slices are shifted in the PDF, already-detached
+        overlays are moved directly, and their cached bbox/xref state is kept
+        consistent so undo/redo and later drags still work.
+        """
+        step = float(dy) - float(drag.get("riding_last_dy", 0.0))
+        if abs(step) < 1e-6:
+            return
+        skip_xref = int(drag.get("riding_skip_xref", 0))
+        moved = annot.shift_riding_group_y(self.doc, gid, step, skip_xref=skip_xref)
+
+        # Overlays of the same seal that were already detached (lifted) need
+        # their display rect shifted directly — they are no longer in the PDF.
+        for j, other in enumerate(self.pending_images):
+            if j == idx or other.get("riding_group") != gid:
+                continue
+            r = other["rect"]
+            other["rect"] = self._clamp_display_rect(
+                other["page"], fitz.Rect(r.x0, r.y0 + step, r.x1, r.y1 + step))
+            bk = other.get("baked")
+            if bk is not None and int(bk.get("xref") or 0) in moved:
+                nx, nb = moved[int(bk["xref"])]
+                bk["xref"] = nx
+                bk["bbox"] = fitz.Rect(nb)
+            self.invalidate_page(other["page"])
+
+        # Any page whose baked slice moved must be re-rendered.
+        for s in annot.find_riding_group(self.doc, gid):
+            self.invalidate_page(s["page"])
+        drag["riding_last_dy"] = float(dy)
+        self._rebuild_pending_items()
+
+    def _sync_riding_group_via_dialog(self, idx: int, gid: int, dy: float) -> None:
+        """Same as :meth:`_sync_riding_group` for keyboard/properties edits.
+
+        The edited slice may just have been materialized by ``set_object_rect``;
+        skip it by checking which xrefs still exist in the PDF group.
+        """
+        if abs(float(dy)) < 1e-6:
+            return
+        for j, other in enumerate(self.pending_images):
+            if j == idx or other.get("riding_group") != gid:
+                continue
+            r = other["rect"]
+            other["rect"] = self._clamp_display_rect(
+                other["page"], fitz.Rect(r.x0, r.y0 + dy, r.x1, r.y1 + dy))
+            self.invalidate_page(other["page"])
+        # Move baked slices that are still in the PDF (the edited one is a
+        # loose overlay now, so it is naturally excluded).
+        edited_baked = (self.pending_images[idx].get("baked") or {}).get("xref", 0)
+        groups = annot.find_riding_group(self.doc, gid)
+        skip = 0 if not edited_baked else int(edited_baked)
+        moved = annot.shift_riding_group_y(self.doc, gid, dy, skip_xref=skip)
+        for j, other in enumerate(self.pending_images):
+            if j == idx or other.get("riding_group") != gid:
+                continue
+            bk = other.get("baked")
+            if bk is not None and int(bk.get("xref") or 0) in moved:
+                nx, nb = moved[int(bk["xref"])]
+                bk["xref"] = nx
+                bk["bbox"] = fitz.Rect(nb)
+        for s in groups:
+            self.invalidate_page(s["page"])
+        self._rebuild_pending_items()
 
     def set_object_rect(self, idx: int, rect, push: bool = True) -> None:
         if not (0 <= idx < len(self.pending_images)):
@@ -911,10 +1019,20 @@ class PdfView(QGraphicsView):
                      Qt.Key_Up: (0.0, -step), Qt.Key_Down: (0.0, step)}
             if key in moves and 0 <= self._selected < len(self.pending_images):
                 dx, dy = moves[key]
-                r = self.pending_images[self._selected]["rect"]
-                self.set_object_rect(self._selected,
-                                     fitz.Rect(r.x0 + dx, r.y0 + dy,
-                                               r.x1 + dx, r.y1 + dy))
+                im = self.pending_images[self._selected]
+                r = im["rect"]
+                gid = im.get("riding_group")
+                if gid is not None:
+                    # Riding slices ignore horizontal nudges; vertical nudges
+                    # move the whole seal so it can still be reassembled.
+                    dx = 0.0
+                    new_r = fitz.Rect(r.x0, r.y0 + dy, r.x1, r.y1 + dy)
+                    self.set_object_rect(self._selected, new_r)
+                    self._sync_riding_group_via_dialog(self._selected, gid, dy)
+                else:
+                    self.set_object_rect(self._selected,
+                                         fitz.Rect(r.x0 + dx, r.y0 + dy,
+                                                   r.x1 + dx, r.y1 + dy))
                 event.accept()
                 return
         super().keyPressEvent(event)

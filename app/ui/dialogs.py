@@ -2476,7 +2476,7 @@ class RidingStampDialog(QDialog):
         rev = self.reverse.isChecked()
         cache: dict = {}
         out = []
-        for start in range(0, len(pages), g):
+        for seal_seq, start in enumerate(range(0, len(pages), g)):
             chunk = pages[start:start + g]
             k = len(chunk)
             if k not in cache:
@@ -2486,7 +2486,9 @@ class RidingStampDialog(QDialog):
                 slices.reverse()
             for slot, pi in enumerate(chunk):
                 png, sw, sh = slices[slot]
-                out.append((pi, png, sw, sh, slot))
+                # 6th item = seal group sequence, so slices of one physical
+                # seal share a group id and stay locked together when edited.
+                out.append((pi, png, sw, sh, slot, seal_seq))
         return pages, out
 
     def options(self) -> dict:
@@ -2577,12 +2579,14 @@ class RidingStampDialog(QDialog):
 class ObjectPropertiesDialog(QDialog):
     """Exact size / position editor for an inserted image or stamp."""
 
-    def __init__(self, rect: fitz.Rect, kind: str = "image", parent=None) -> None:
+    def __init__(self, rect: fitz.Rect, kind: str = "image", parent=None,
+                 riding: bool = False) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("dlg.object.title"))
         self._aspect = rect.width / max(1.0, rect.height)
         self._updating = False
         self._delete_requested = False
+        self._riding = bool(riding)
 
         self.x = self._spin(-2000.0, 4000.0, rect.x0)
         self.y = self._spin(-2000.0, 4000.0, rect.y0)
@@ -2593,10 +2597,15 @@ class ObjectPropertiesDialog(QDialog):
         self.width.valueChanged.connect(self._width_changed)
         self.height.valueChanged.connect(self._height_changed)
 
-        hint = QLabel(tr("dlg.object.hint"))
+        hint = QLabel(tr("dlg.object.riding_hint") if self._riding
+                      else tr("dlg.object.hint"))
         hint.setWordWrap(True)
         hint.setObjectName("hintLabel")
         hint.setMinimumHeight(58)
+        if self._riding:
+            # A riding slice is locked to its page edge; only Y may change.
+            for w in (self.x, self.width, self.height, self.lock):
+                w.setEnabled(False)
 
         title = QLabel(tr("dlg.object.title"))
         f = title.font()
@@ -2654,6 +2663,8 @@ class ObjectPropertiesDialog(QDialog):
         return self._delete_requested
 
     def rect(self) -> fitz.Rect:
+        # For riding slices x/width/height are disabled, so only y differs —
+        # the horizontal band and size stay exactly as inserted.
         return fitz.Rect(self.x.value(), self.y.value(),
                          self.x.value() + self.width.value(),
                          self.y.value() + self.height.value())

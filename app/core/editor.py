@@ -204,14 +204,16 @@ def image_source_bytes(source) -> bytes:
 
 
 def insert_image_bytes(doc: PdfDocument, page_index: int, rect: fitz.Rect, source,
-                       keep_aspect: bool = False, rotate: int = 0) -> None:
+                       keep_aspect: bool = False, rotate: int = 0) -> int:
+    """Insert an image and return its xref (callers may tag riding-stamp slices)."""
     page = doc.page(page_index)
     try:
-        page.insert_image(fitz.Rect(rect), stream=image_source_bytes(source),
-                          keep_proportion=keep_aspect, rotate=rotate)
+        xref = page.insert_image(fitz.Rect(rect), stream=image_source_bytes(source),
+                                 keep_proportion=keep_aspect, rotate=rotate)
     except Exception as exc:  # noqa: BLE001
         raise PdfError(f"Image insert failed: {exc}") from exc
     doc.mark_dirty()
+    return int(xref or 0)
 
 
 # --------------------------------------------------- editable image objects

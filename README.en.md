@@ -12,22 +12,22 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.18) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 / v1.0.18 to be rebuilt) |
+| Windows (64-bit) | `setup.exe` (v1.0.19) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 / v1.0.18 / v1.0.19 to be rebuilt) |
 
-> **v1.0.18 (Windows built, committed locally, Release not yet published)**: the default stamp diameter is now **42 mm** (a common Chinese official-seal size; old configs migrate automatically while manually chosen values are kept). Riding stamps **regain the "Placement" choice**, standardised into four print-shop conventions: odd-right/even-left (standard duplex, default), odd-left/even-right (reverse duplex), all-right (simplex) and all-left (simplex); odd/even uses the **real page number**. A single "distance from top" still moves every stamped page in sync.
-> The v1.0.17 changes (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 printing fixes are retained.
-> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.18_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
+> **v1.0.19 (Windows built, committed locally, Release not yet published)**: riding-stamp slices can now **only move vertically** — horizontal dragging, arrow-key left/right and the dialog's X/width/height fields are all locked. Dragging any one slice (or using up/down arrows / the Y field) **moves every slice of the same seal by the same amount**, so stacking the printed sheets still rebuilds one complete seal. Group tags are stored inside the PDF, so the linkage survives saving and reopening.
+> The v1.0.18 changes (42 mm default diameter, four placement conventions), v1.0.17 (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 fixes are retained.
+> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.19_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
 > The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.18 `setup.exe` SHA-256: `dc2f39b9639f8c60e8201882fc2b2ecdbae0db7faee7eca114e9269ed5dad999`.
+> v1.0.19 `setup.exe` SHA-256: `591bce96187ce8206467152a122859cd5a4de3ac53a86892bc7e9951ddf5b6a7`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.18_arm64.deb
+sudo dpkg -i lightpdf_1.0.19_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -82,6 +82,12 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.19
+
+- **Riding slices are edge-locked**: no horizontal dragging, arrow-key left/right or X/width/height editing — only vertical movement is allowed.
+- **Whole-seal vertical linkage**: dragging one slice, up/down arrows or the Y field moves every slice of the same seal by the same distance; multiple seals are independent.
+- **Persistent grouping**: the group tag is written into the PDF, so linkage survives save/reopen, undo/redo and re-baking.
 
 ### 1.0.18
 

@@ -14,27 +14,26 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.18） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 待本机重建） |
+| Windows（64 位） | `setup.exe`（v1.0.19） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 / v1.0.19 待本机重建） |
 
-> **v1.0.18（Windows 已打包，本地提交，尚未发布 Release）**：印章默认直径改为 **42 mm**（国标公章常见尺寸，
-> 旧配置会自动迁移、手动改过的值保留）；骑缝章**恢复「加盖方式」**，按印刷装订习惯统一为
-> 「奇数页右/偶数页左（标准双面）」「奇数页左/偶数页右（反向双面）」「全部右侧（单面）」「全部左侧（单面）」四种，
-> 奇偶按**真实页码**判断；位置仍只需一个「距页顶距离」让所有盖章页同步。
-> v1.0.17（毫米单位、红章直径、照片去背景）、v1.0.16 / v1.0.15 的修复继续保留。
+> **v1.0.19（Windows 已打包，本地提交，尚未发布 Release）**：骑缝章插入后**只能上下移动、不能左右移动**，
+> 拖动任一页切片时**同一枚章的所有页切片同步上下移动**，保证打印叠齐后拼成完整印章；分组信息写入 PDF 持久化，
+> 保存重开后仍联动。v1.0.18（42 mm 默认直径、四种加盖方式）、v1.0.17（毫米单位、红章直径、照片去背景）、
+> v1.0.16 / v1.0.15 的改动继续保留。
 > **麒麟 `.deb` 仍为 v1.0.16**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
-> `lightpdf_1.0.18_arm64.deb` 后才会包含本版改动。
+> `lightpdf_1.0.19_arm64.deb` 后才会包含本版改动。
 > [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.18 `setup.exe` 校验值（SHA-256）：`dc2f39b9639f8c60e8201882fc2b2ecdbae0db7faee7eca114e9269ed5dad999`。
+> v1.0.19 `setup.exe` 校验值（SHA-256）：`591bce96187ce8206467152a122859cd5a4de3ac53a86892bc7e9951ddf5b6a7`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.18_arm64.deb
+sudo dpkg -i lightpdf_1.0.19_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -86,6 +85,12 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.19
+
+- **骑缝章切片编辑规则**：水平位置锁定（不能左右拖动、方向键左右与属性对话框 X/宽/高禁用），只能上下移动。
+- **同章整组联动**：拖动任一页切片、方向键上下或属性对话框改 Y 时，同一枚章的所有页切片同步移动相同距离；多枚章互不干扰。
+- **分组持久化**：分组标记写入 PDF，保存重开后仍能识别并继续联动；撤销/重做、烘焙回 PDF 均保留标记。
 
 ### 1.0.18
 

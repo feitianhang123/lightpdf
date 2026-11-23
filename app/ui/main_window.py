@@ -749,13 +749,22 @@ class MainWindow(QMainWindow):
         obj = tab.view.selected_object()
         if obj is None or obj["index"] != idx:
             return
-        dlg = ObjectPropertiesDialog(obj["rect"], obj["kind"], self)
+        riding = obj.get("riding_group")
+        dlg = ObjectPropertiesDialog(obj["rect"], obj["kind"], self,
+                                     riding=riding is not None)
         if not dlg.exec():
             return
         if dlg.delete_requested():
             tab.view.remove_selected()
         else:
-            tab.view.set_object_rect(idx, dlg.rect())
+            old_y = obj["rect"].y0
+            new_rect = dlg.rect()
+            tab.view.set_object_rect(idx, new_rect)
+            if riding is not None:
+                # Property dialog only changes Y for riding slices; keep every
+                # other slice of this seal at the same vertical position.
+                tab.view._sync_riding_group_via_dialog(
+                    idx, riding, new_rect.y0 - old_y)
         self._update_title()
         self._update_undo_redo()
 

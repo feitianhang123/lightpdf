@@ -9,6 +9,100 @@ from .document import PdfDocument, PdfError
 
 Color = tuple  # (r, g, b) floats 0..1 or ints 0..255
 
+# 骑缝章分组标记：写在每个切片图片对象的字典里，随 PDF 一起持久化。
+# 同一枚章的所有切片共享一个 group id；这样重开文件后仍能识别"哪些切片属于
+# 同一枚章"，拖动其中一页时把垂直位移同步给整组，水平位置则锁定。
+RIDING_GROUP_KEY = "LightpdfRidingGroup"
+RIDING_SLOT_KEY = "LightpdfRidingSlot"
+
+
+def _group_key_value(doc: PdfDocument, xref: int, key: str) -> Optional[int]:
+    if not doc or not doc.doc or xref <= 0:
+        return None
+    try:
+        kind, value = doc.doc.xref_get_key(int(xref), key)
+    except Exception:  # noqa: BLE001
+        return None
+    if kind not in ("int", "xnumber", "number"):
+        return None
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def riding_group_at(doc: PdfDocument, xref: int) -> Optional[int]:
+    """Return the riding-stamp group id of an image xref, or ``None``."""
+    return _group_key_value(doc, xref, RIDING_GROUP_KEY)
+
+
+def riding_slot_at(doc: PdfDocument, xref: int) -> int:
+    return _group_key_value(doc, xref, RIDING_SLOT_KEY) or 0
+
+
+def tag_riding_slice(doc: PdfDocument, xref: int, group_id: int, slot: int) -> None:
+    """Tag an inserted slice image so it can be found as part of a seal group."""
+    if not doc.doc or xref <= 0:
+        return
+    try:
+        doc.doc.xref_set_key(int(xref), RIDING_GROUP_KEY, str(int(group_id)))
+        doc.doc.xref_set_key(int(xref), RIDING_SLOT_KEY, str(int(slot)))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def next_riding_group_base(doc: PdfDocument) -> int:
+    """Group id for the next stamp: one above the largest id already in the PDF."""
+    biggest = 0
+    if not doc or not doc.doc:
+        return 1
+    for page_index in range(doc.page_count):
+        try:
+            infos = doc.page(page_index).get_image_info(xrefs=True)
+        except Exception:  # noqa: BLE001
+            continue
+        for info in infos:
+            gid = riding_group_at(doc, int(info.get("xref") or 0))
+            if gid is not None and gid > biggest:
+                biggest = gid
+    return biggest + 1
+
+
+def _transform_rotation(transform) -> int:
+    if not transform or len(transform) < 6:
+        return 0
+    a, b = float(transform[0]), float(transform[1])
+    if abs(a) >= abs(b):
+        return 0 if a >= 0 else 180
+    return 270 if b > 0 else 90
+
+
+def find_riding_group(doc: PdfDocument, group_id: int) -> List[dict]:
+    """All slices of one seal across the document.
+
+    Each entry: ``{page, xref, bbox, rotate, slot}``.  ``bbox`` is in the
+    page's unrotated coordinate space; callers map it back to display space.
+    """
+    out: List[dict] = []
+    if not doc or not doc.doc:
+        return out
+    for page_index in range(doc.page_count):
+        try:
+            page = doc.page(page_index)
+            infos = page.get_image_info(xrefs=True)
+        except Exception:  # noqa: BLE001
+            continue
+        for info in infos:
+            xref = int(info.get("xref") or 0)
+            if riding_group_at(doc, xref) != int(group_id):
+                continue
+            out.append({"page": page_index, "xref": xref,
+                        "bbox": fitz.Rect(info["bbox"]),
+                        "rotate": _transform_rotation(info.get("transform")),
+                        "slot": riding_slot_at(doc, xref)})
+    out.sort(key=lambda s: (s["page"], s["slot"]))
+    return out
+
 
 def _as_fitz_color(color: Color) -> tuple:
     """Accept 0..1 floats or 0..255 ints and return 0..1 floats.
@@ -199,7 +293,9 @@ def insert_stamp_image(doc: PdfDocument, page_index: int, rect: fitz.Rect,
 def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
                         margin_mm: float = 4.23,
                         top_mm: Optional[float] = None,
-                        side: str = "alternate") -> None:
+                        side: str = "alternate",
+                        group_base: Optional[int] = None) -> int:
+    """Return the first group id used (assignments may contain several seals)."""
     """Place one vertical slice of a seal on the edge of each page (骑缝章).
 
     ``assignments`` items are ``(page_index, png_bytes, width_pt, height_pt,
@@ -223,7 +319,21 @@ def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
     """
     pt_per_mm = 72.0 / 25.4
     margin_pt = float(margin_mm) * pt_per_mm
-    for page_index, data, sw, sh, slot in assignments:
+    if group_base is None:
+        group_base = next_riding_group_base(doc)
+    first_group = None
+    # Each item is (page, png, w, h, slot) and may carry a 6th item marking
+    # which seal it belongs to (one dialog can lay several seals).  Old 5-tuples
+    # are still accepted and treated as a single seal.
+    for item in assignments:
+        if len(item) >= 6:
+            page_index, data, sw, sh, slot, seal_seq = item
+        else:
+            page_index, data, sw, sh, slot = item
+            seal_seq = 0
+        group_id = int(group_base) + int(seal_seq)
+        if first_group is None:
+            first_group = group_id
         page = doc.page(page_index)
         pr = page.rect
         odd_page = (int(page_index) + 1) % 2 == 1
@@ -249,9 +359,79 @@ def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
         rot = page.rotation or 0
         if rot:
             rect = rect * page.derotation_matrix
-        page.insert_image(rect, stream=bytes(data), keep_proportion=False,
-                          overlay=True, rotate=rot)
+        xref = page.insert_image(rect, stream=bytes(data), keep_proportion=False,
+                                 overlay=True, rotate=rot)
+        tag_riding_slice(doc, xref, group_id, slot)
     doc.mark_dirty()
+    return first_group if first_group is not None else int(group_base)
+
+
+def shift_riding_group_y(doc: PdfDocument, group_id: int, dy: float,
+                         skip_xref: int = 0) -> dict:
+    """Move every baked slice of a seal vertically by ``dy`` display points.
+
+    Horizontal coordinates and slice sizes are untouched: a riding seal only
+    slides up/down as one piece.  ``skip_xref`` is the slice currently being
+    edited as a live overlay (already detached from the PDF).
+
+    Returns ``{old_xref: (new_xref, new_bbox_unrotated)}`` so the caller can
+    keep its own overlay state in sync (re-inserting creates a new xref).
+    """
+    moved: dict = {}
+    if not doc or not doc.doc or abs(float(dy)) < 1e-6:
+        return moved
+    slices = [s for s in find_riding_group(doc, group_id) if s["xref"] != skip_xref]
+    # Extract bytes before any delete (delete_image invalidates the xref).
+    payload = {}
+    for s in slices:
+        try:
+            payload[s["xref"]] = image_object_bytes_for(doc, s["xref"])
+        except Exception:  # noqa: BLE001
+            pass
+    for s in slices:
+        xref = s["xref"]
+        if xref not in payload:
+            continue
+        page = doc.page(s["page"])
+        # bbox from get_image_info is in unrotated page coordinates; the drag
+        # delta is in visible/display points, so round-trip through the page
+        # rotation matrices.  For unrotated pages both matrices are identity.
+        shown = s["bbox"] * page.rotation_matrix
+        new_shown = fitz.Rect(shown.x0, shown.y0 + float(dy),
+                              shown.x1, shown.y1 + float(dy))
+        new_unrot = new_shown * page.derotation_matrix
+        try:
+            page.delete_image(xref)
+            new_xref = page.insert_image(new_unrot, stream=payload[xref],
+                                         keep_proportion=False,
+                                         rotate=s["rotate"])
+        except Exception:  # noqa: BLE001
+            continue
+        new_xref = int(new_xref or 0)
+        tag_riding_slice(doc, new_xref, group_id, s["slot"])
+        moved[xref] = (new_xref, fitz.Rect(new_unrot))
+    if moved:
+        doc.mark_dirty()
+    return moved
+
+
+def image_object_bytes_for(doc: PdfDocument, xref: int) -> bytes:
+    """Extract an embedded image as PNG (shared helper, avoids import cycle)."""
+    owner = doc.doc
+    try:
+        pix = fitz.Pixmap(owner, int(xref))
+        if pix.colorspace is None or pix.colorspace.n > 3:
+            pix = fitz.Pixmap(fitz.csRGB, pix)
+        key = owner.xref_get_key(int(xref), "SMask")
+        if key and key[0] == "xref":
+            smask_xref = int(str(key[1]).split()[0])
+            smask = fitz.Pixmap(owner, smask_xref)
+            if smask.width == pix.width and smask.height == pix.height:
+                pix = fitz.Pixmap(pix, smask)
+        return pix.tobytes("png")
+    except Exception:  # noqa: BLE001
+        raw = owner.extract_image(int(xref))
+        return bytes(raw["image"])
 
 
 # ------------------------------------------------------------------ inspect
