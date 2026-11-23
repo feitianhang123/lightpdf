@@ -12,22 +12,22 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.19) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 / v1.0.18 / v1.0.19 to be rebuilt) |
+| Windows (64-bit) | `setup.exe` (v1.0.20) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 / v1.0.18 / v1.0.19 / v1.0.20 to be rebuilt) |
 
-> **v1.0.19 (Windows built, committed locally, Release not yet published)**: riding-stamp slices can now **only move vertically** — horizontal dragging, arrow-key left/right and the dialog's X/width/height fields are all locked. Dragging any one slice (or using up/down arrows / the Y field) **moves every slice of the same seal by the same amount**, so stacking the printed sheets still rebuilds one complete seal. Group tags are stored inside the PDF, so the linkage survives saving and reopening.
-> The v1.0.18 changes (42 mm default diameter, four placement conventions), v1.0.17 (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 fixes are retained.
-> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.19_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
+> **v1.0.20 (Windows built, committed locally, Release not yet published)**: fixes "Annotate → Insert Riding Stamp" doing nothing on the first click and crashing on the second. The preview still unpacked a slice as five fields although v1.0.19 added a sixth (seal sequence), so dialog construction raised before the window appeared; both 5- and 6-field slices are now accepted. Also fixes a case where identical slice images were de-duplicated onto one PDF xref, causing later seals to overwrite earlier riding-group tags.
+> The v1.0.19 changes (vertical-only riding slices, whole-seal linkage and persistence), v1.0.18 (42 mm default diameter, four placement conventions), v1.0.17 (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 fixes are retained.
+> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.20_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
 > The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.19 `setup.exe` SHA-256: `591bce96187ce8206467152a122859cd5a4de3ac53a86892bc7e9951ddf5b6a7`.
+> v1.0.20 `setup.exe` SHA-256: `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.19_arm64.deb
+sudo dpkg -i lightpdf_1.0.20_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -68,7 +68,7 @@ ISCC.exe installer.iss                    # produces 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # one command: install system deps if needed, then build
-# output: dist/lightpdf_1.0.16_arm64.deb
+# output: dist/lightpdf_1.0.20_arm64.deb
 ```
 
 For an offline transfer, **source only (~0.6 MB)** is needed: `app/`, `run_app.py`, `requirements.txt`, `icon.ico`,
@@ -82,6 +82,11 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.20
+
+- **Fixed Insert Riding Stamp not responding / crashing**: the preview unpacked five fields per slice while v1.0.19 added a sixth (seal sequence), so the dialog constructor raised before it appeared. Five- and six-field slices are both accepted now.
+- **Fixed riding-group tag collisions across seals**: identical slice images could be de-duplicated onto one PDF xref and the newest seal overwrote older group tags. Every inserted, moved and re-baked slice now gets its own PNG text chunk, so each slice keeps an independent xref and linkage.
 
 ### 1.0.19
 

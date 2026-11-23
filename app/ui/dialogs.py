@@ -2522,7 +2522,10 @@ class RidingStampDialog(QDialog):
         # top: slices laid side by side -> the reassembled seal
         x = 10.0
         dash = QPen(QColor("#8FB69A")); dash.setStyle(Qt.DashLine)
-        for _pi, png, sw, sh, _slot in first:
+        # v1.0.19 assignments carry a 6th item (seal sequence).  Accept the
+        # old 5-item shape too so this preview never breaks again.
+        for item in first:
+            png, sw, sh = item[1], item[2], item[3]
             im = QImage.fromData(png, "PNG")
             w = sw * zoom
             p.drawImage(QRectF(x, 10, w, h_pt * zoom), im)

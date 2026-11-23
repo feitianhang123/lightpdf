@@ -724,8 +724,14 @@ class PdfView(QGraphicsView):
             try:
                 page = self.doc.page(im["page"])
                 pdf_rect = fitz.Rect(im["rect"]) * page.derotation_matrix
+                source = im["source"]
+                if im.get("riding_group") is not None:
+                    # Identical slices must not collapse onto one PDF xref,
+                    # otherwise their riding-group tags overwrite each other.
+                    source = annot.unique_png_bytes(
+                        source, int(im["riding_group"]), int(im.get("riding_slot", 0)))
                 xref = ed.insert_image_bytes(self.doc, im["page"], pdf_rect,
-                                             im["source"],
+                                             source,
                                              rotate=im.get("rotate") or 0)
                 # Re-apply the riding-stamp group tag: baking a loose overlay
                 # creates a new xref, so the link must be written again or the

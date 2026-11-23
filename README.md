@@ -14,26 +14,26 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.19） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 / v1.0.19 待本机重建） |
+| Windows（64 位） | `setup.exe`（v1.0.20） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 / v1.0.19 / v1.0.20 待本机重建） |
 
-> **v1.0.19（Windows 已打包，本地提交，尚未发布 Release）**：骑缝章插入后**只能上下移动、不能左右移动**，
-> 拖动任一页切片时**同一枚章的所有页切片同步上下移动**，保证打印叠齐后拼成完整印章；分组信息写入 PDF 持久化，
-> 保存重开后仍联动。v1.0.18（42 mm 默认直径、四种加盖方式）、v1.0.17（毫米单位、红章直径、照片去背景）、
-> v1.0.16 / v1.0.15 的改动继续保留。
+> **v1.0.20（Windows 已打包，本地提交，尚未发布 Release）**：修复「批注 → 插入骑缝章」点击后对话框不弹出、
+> 再次点击导致闪退的问题；同时修复多枚骑缝章图片相同时 PDF 复用同一图片对象、分组标记互相覆盖的隐患。
+> v1.0.19（骑缝章切片只能上下移动、同章整组联动并持久化）、v1.0.18（42 mm 默认直径、四种加盖方式）、
+> v1.0.17（毫米单位、红章直径、照片去背景）、v1.0.16 / v1.0.15 的改动继续保留。
 > **麒麟 `.deb` 仍为 v1.0.16**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
-> `lightpdf_1.0.19_arm64.deb` 后才会包含本版改动。
+> `lightpdf_1.0.20_arm64.deb` 后才会包含本版改动。
 > [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.19 `setup.exe` 校验值（SHA-256）：`591bce96187ce8206467152a122859cd5a4de3ac53a86892bc7e9951ddf5b6a7`。
+> v1.0.20 `setup.exe` 校验值（SHA-256）：`5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.19_arm64.deb
+sudo dpkg -i lightpdf_1.0.20_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -74,7 +74,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.16_arm64.deb
+# 产物：dist/lightpdf_1.0.20_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、
@@ -85,6 +85,11 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.20
+
+- **修复插入骑缝章无响应 / 闪退**：预览生成时按 5 项解包切片，而 v1.0.19 起切片带第 6 项「图章序号」，导致对话框构造即抛异常；现在兼容 5/6 项，菜单点击可正常弹出对话框。
+- **修复多枚骑缝章分组覆盖**：相同图片流被 PDF 去重复用会共用同一 xref，后一枚章的分组标记覆盖前一枚；插入/移动/烘焙时给每个切片写入独立 PNG 文本块，确保每片独自成组、独立联动。
 
 ### 1.0.19
 

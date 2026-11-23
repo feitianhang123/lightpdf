@@ -1,6 +1,9 @@
 """Annotation authoring helpers on top of PyMuPDF."""
 from __future__ import annotations
 
+import struct
+import uuid
+import zlib
 from typing import List, Optional, Sequence
 
 import fitz
@@ -49,6 +52,41 @@ def tag_riding_slice(doc: PdfDocument, xref: int, group_id: int, slot: int) -> N
         doc.doc.xref_set_key(int(xref), RIDING_SLOT_KEY, str(int(slot)))
     except Exception:  # noqa: BLE001
         pass
+
+
+def unique_png_bytes(png: bytes, group_id: int = 0, slot: int = 0) -> bytes:
+    """Give an image stream a unique digest without changing its pixels.
+
+    PyMuPDF de-duplicates identical image streams by content digest.  Two
+    riding-stamp slices that happen to be pixel-identical would otherwise share
+    one PDF xref, and the second ``tag_riding_slice`` would overwrite the first
+    slice's group/slot — breaking the "all slices of one seal move together"
+    rule.  Adding a private PNG text chunk changes only the stream digest.
+    """
+    sig = b"\x89PNG\r\n\x1a\n"
+    if not png or not png.startswith(sig):
+        return png
+    marker = ("LightpdfRiding-%d-%d-%s" %
+              (int(group_id), int(slot), uuid.uuid4().hex)).encode("ascii")
+    text = b"LightpdfStamp\0" + marker
+    chunk = (struct.pack(">I", len(text)) + b"tEXt" + text +
+             struct.pack(">I", zlib.crc32(b"tEXt" + text) & 0xFFFFFFFF))
+    out = bytearray(sig)
+    pos = len(sig)
+    while pos + 8 <= len(png):
+        length = struct.unpack(">I", png[pos:pos + 4])[0]
+        ctype = png[pos + 4:pos + 8]
+        end = pos + 12 + length
+        if end > len(png):
+            return png                      # malformed: do not touch it
+        if ctype == b"IEND":
+            out.extend(chunk)
+        out.extend(png[pos:end])
+        pos = end
+        if ctype == b"IEND":
+            out.extend(png[pos:])           # keep any trailing bytes verbatim
+            break
+    return bytes(out)
 
 
 def next_riding_group_base(doc: PdfDocument) -> int:
@@ -299,8 +337,9 @@ def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
     """Place one vertical slice of a seal on the edge of each page (骑缝章).
 
     ``assignments`` items are ``(page_index, png_bytes, width_pt, height_pt,
-    slot_index)``.  ``slot_index`` is the slice's order inside one seal group
-    (used only for slice order, not for the edge).
+    slot_index, seal_seq)``.  ``slot_index`` is the slice's order inside one
+    seal group; ``seal_seq`` distinguishes several seals laid out in one job.
+    Legacy 5-tuples are still accepted as a single seal.
 
     ``side`` is the binding/placement convention, using standard print-shop
     terminology:
@@ -322,9 +361,8 @@ def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
     if group_base is None:
         group_base = next_riding_group_base(doc)
     first_group = None
-    # Each item is (page, png, w, h, slot) and may carry a 6th item marking
-    # which seal it belongs to (one dialog can lay several seals).  Old 5-tuples
-    # are still accepted and treated as a single seal.
+    # Each item is (page, png, w, h, slot, seal_seq).  Old 5-tuples are still
+    # accepted and treated as a single seal.
     for item in assignments:
         if len(item) >= 6:
             page_index, data, sw, sh, slot, seal_seq = item
@@ -359,7 +397,11 @@ def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
         rot = page.rotation or 0
         if rot:
             rect = rect * page.derotation_matrix
-        xref = page.insert_image(rect, stream=bytes(data), keep_proportion=False,
+        # Force a distinct image object even when two slices are pixel-identical.
+        # Otherwise PyMuPDF reuses one xref and the group tag of the first seal
+        # is silently overwritten by the second.
+        data = unique_png_bytes(bytes(data), group_id, slot)
+        xref = page.insert_image(rect, stream=data, keep_proportion=False,
                                  overlay=True, rotate=rot)
         tag_riding_slice(doc, xref, group_id, slot)
     doc.mark_dirty()
@@ -402,7 +444,8 @@ def shift_riding_group_y(doc: PdfDocument, group_id: int, dy: float,
         new_unrot = new_shown * page.derotation_matrix
         try:
             page.delete_image(xref)
-            new_xref = page.insert_image(new_unrot, stream=payload[xref],
+            stream = unique_png_bytes(payload[xref], group_id, s["slot"])
+            new_xref = page.insert_image(new_unrot, stream=stream,
                                          keep_proportion=False,
                                          rotate=s["rotate"])
         except Exception:  # noqa: BLE001
