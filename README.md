@@ -15,19 +15,20 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe`（v1.0.20） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 / v1.0.19 / v1.0.20 待本机重建） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20） |
 
-> **v1.0.20（Windows 已打包，本地提交，尚未发布 Release）**：修复「批注 → 插入骑缝章」点击后对话框不弹出、
+> **v1.0.20（Windows 与麒麟双平台已构建并发布 Release）**：修复「批注 → 插入骑缝章」点击后对话框不弹出、
 > 再次点击导致闪退的问题；同时修复多枚骑缝章图片相同时 PDF 复用同一图片对象、分组标记互相覆盖的隐患。
 > v1.0.19（骑缝章切片只能上下移动、同章整组联动并持久化）、v1.0.18（42 mm 默认直径、四种加盖方式）、
 > v1.0.17（毫米单位、红章直径、照片去背景）、v1.0.16 / v1.0.15 的改动继续保留。
-> **麒麟 `.deb` 仍为 v1.0.16**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
-> `lightpdf_1.0.20_arm64.deb` 后才会包含本版改动。
-> [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 仍为当前已发布的最新版本；
+> 麒麟 `.deb` 已由用户在 aarch64 本机重建，control 为 `Version: 1.0.20 / arm64`，并核验内嵌修复逻辑。
+> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 为当前最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.20 `setup.exe` 校验值（SHA-256）：`5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`。
+> v1.0.20 校验值（SHA-256）：
+> `setup.exe` = `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`；
+> `lightpdf_1.0.20_arm64.deb` = `84915277106ae4c6dd6e3d4cc4650f1824651b893e81b71553a71c88ad6b7d37`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
