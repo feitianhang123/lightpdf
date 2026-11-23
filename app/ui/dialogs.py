@@ -2138,7 +2138,7 @@ class StampSettingsDialog(QDialog):
         self.image_w.setRange(5.0, 200.0)
         self.image_w.setDecimals(1); self.image_w.setSingleStep(1.0)
         self.image_w.setSuffix(" mm")
-        self.image_w.setValue(float(self.cfg.get("stamp_diameter_mm", 40.0)))
+        self.image_w.setValue(float(self.cfg.get("stamp_diameter_mm", 42.0)))
         self.remove_bg = QCheckBox(tr("dlg.stamp.remove_bg"))
         self.remove_bg.setChecked(bool(self.cfg.get("remove_bg", True)))
         self.remove_bg.setToolTip(tr("dlg.stamp.remove_bg_hint"))
@@ -2330,8 +2330,13 @@ class RidingStampDialog(QDialog):
         self.group.setSpecialValueText(tr("dlg.riding.group_auto"))
 
         # ---------------------------------------------------------- layout
-        # Position is vertical-only: the seal's odd/even edge is fixed by the
-        # binding logic, and every stamped page shares one top offset in mm.
+        # Placement convention (which page edge each slice lands on) plus one
+        # shared vertical offset in mm — position is otherwise vertical-only.
+        self.side = QComboBox()
+        self.side.addItem(tr("dlg.riding.side_alternate"), "alternate")
+        self.side.addItem(tr("dlg.riding.side_alternate_rev"), "alternate_rev")
+        self.side.addItem(tr("dlg.riding.side_right"), "right")
+        self.side.addItem(tr("dlg.riding.side_left"), "left")
         self.top_mm = QDoubleSpinBox()
         self.top_mm.setRange(0.0, 600.0)
         self.top_mm.setDecimals(1); self.top_mm.setSingleStep(1.0)
@@ -2340,7 +2345,7 @@ class RidingStampDialog(QDialog):
         self.stamp_w = QDoubleSpinBox()
         self.stamp_w.setRange(5.0, 200.0)
         self.stamp_w.setDecimals(1); self.stamp_w.setSingleStep(1.0)
-        self.stamp_w.setValue(40.0)
+        self.stamp_w.setValue(float(self.cfg.get("stamp_diameter_mm", 42.0)))
         self.stamp_w.setSuffix(" mm")
         self.margin = QDoubleSpinBox()
         self.margin.setRange(0.0, 100.0)
@@ -2368,6 +2373,7 @@ class RidingStampDialog(QDialog):
         form.addRow(tr("dlg.riding.scope"), self.scope)
         form.addRow(tr("dlg.rotate.pages"), self.pages)
         form.addRow(tr("dlg.riding.group"), self.group)
+        form.addRow(tr("dlg.riding.side"), self.side)
         form.addRow(tr("dlg.riding.top"), self.top_mm)
         form.addRow(tr("dlg.riding.width"), self.stamp_w)
         form.addRow(tr("dlg.riding.margin"), self.margin)
@@ -2388,6 +2394,7 @@ class RidingStampDialog(QDialog):
 
         self.source.currentIndexChanged.connect(self._sync)
         self.scope.currentIndexChanged.connect(self._sync)
+        self.side.currentIndexChanged.connect(self._refresh)
         for w in (self.pages,):
             w.textChanged.connect(self._refresh)
         for w in (self.group, self.top_mm, self.stamp_w, self.margin, self.overlap):
@@ -2484,7 +2491,8 @@ class RidingStampDialog(QDialog):
 
     def options(self) -> dict:
         return {"margin_mm": float(self.margin.value()),
-                "top_mm": float(self.top_mm.value())}
+                "top_mm": float(self.top_mm.value()),
+                "side": self.side.currentData()}
 
     # ------------------------------------------------------------- preview
     def _refresh(self) -> None:
@@ -2529,12 +2537,23 @@ class RidingStampDialog(QDialog):
         # Reference sheet height for the thumbnail (A4 = 297 mm) so the
         # single top_mm value can be drawn at the same spot on every page.
         ref_h_mm = 297.0
+        side = self.side.currentData()
         for k in range(rows):
             px = 10 + k * (pw + gap)
             p.setPen(QPen(QColor("#B9CDBB")))
             p.fillRect(QRectF(px, base_y, pw, ph), QColor("#FBFCFA"))
             p.drawRect(QRectF(px, base_y, pw, ph))
-            right = (k % 2 == 0)          # fixed odd/even edge for binding
+            # Same placement rule as insert_riding_stamp(): 1-based page number
+            # decides odd/even edges, so "odd/even pages" means what it says.
+            odd_page = (pages[k] + 1) % 2 == 1
+            if side == "right":
+                right = True
+            elif side == "left":
+                right = False
+            elif side == "alternate_rev":
+                right = not odd_page
+            else:                          # "alternate" — standard duplex
+                right = odd_page
             sw_pt = first[k % g][2]
             strip_w = max(2, min(pw - 4, int(sw_pt * pw / 595.0 * 2.0)))
             sx = (px + pw - strip_w - 2) if right else (px + 2)

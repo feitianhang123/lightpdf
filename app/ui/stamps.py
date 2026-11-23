@@ -37,9 +37,16 @@ DEFAULT_CONFIG = {
     # "stamp_diameter_mm" is the diameter of the RED seal itself, not the
     # uploaded photo's canvas size.  "remove_bg" strips the photo background
     # and crops to the ink before sizing (see prepare_stamp_image).
-    "stamp_diameter_mm": 40.0,
+    # 42 mm is the common diameter of a Chinese official seal.
+    "stamp_diameter_mm": 42.0,
     "remove_bg": True,
 }
+
+# One-time upgrade from the v1.0.17 default (40 mm) to 42 mm.  A value that
+# the user explicitly changed (anything other than 40.0) is left untouched.
+_DEFAULT_DIAMETER_OLD = 40.0
+_DEFAULT_DIAMETER_NEW = 42.0
+_MIGRATED_FLAG = "stamp/diameter42_migrated"
 
 _SETTINGS = QSettings("MiniPDF", "MiniPDFEditor")
 
@@ -56,12 +63,22 @@ def load_config() -> dict:
             cfg.update(json.loads(raw))
         except Exception:  # noqa: BLE001
             pass
-    # migrate legacy pixel width -> physical diameter (an old 160px image was
-    # written at 72dpi, i.e. ~56.4 mm; keep that apparent size after upgrade).
+    # Legacy configs only had a pixel width.  From v1.0.18 on the default is
+    # 42 mm; an old config without an explicit diameter adopts that default.
     if "stamp_diameter_mm" not in cfg:
-        legacy = float(cfg.pop("image_width", 160)) * MM_PER_PT
-        cfg["stamp_diameter_mm"] = round(legacy, 1)
+        cfg["stamp_diameter_mm"] = _DEFAULT_DIAMETER_NEW
     cfg.pop("image_width", None)
+    # One-time bump of the v1.0.17 default (40 mm) to 42 mm.  Values the user
+    # deliberately changed are kept, and the flag prevents a later re-bump.
+    try:
+        if not _SETTINGS.value(_MIGRATED_FLAG, False, type=bool):
+            if abs(float(cfg.get("stamp_diameter_mm", 0)) - _DEFAULT_DIAMETER_OLD) < 1e-6:
+                cfg["stamp_diameter_mm"] = _DEFAULT_DIAMETER_NEW
+                save_config(cfg)
+            _SETTINGS.setValue(_MIGRATED_FLAG, True)
+            _SETTINGS.sync()
+    except Exception:  # noqa: BLE001
+        pass
     return cfg
 
 

@@ -12,22 +12,22 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.17) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 to be rebuilt) |
+| Windows (64-bit) | `setup.exe` (v1.0.18) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 / v1.0.18 to be rebuilt) |
 
-> **v1.0.17 (Windows built, committed locally, Release not yet published)**: stamps and riding stamps now use **millimetres**; stamp size is measured on the **red ink diameter** (not the whole uploaded photo); stamp settings gained a "Remove photo background" toggle; and riding stamps are positioned with a single "distance from top" that moves every stamped page in sync.
-> The v1.0.16 / v1.0.15 printing scale and orientation fixes are retained.
-> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.17_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
+> **v1.0.18 (Windows built, committed locally, Release not yet published)**: the default stamp diameter is now **42 mm** (a common Chinese official-seal size; old configs migrate automatically while manually chosen values are kept). Riding stamps **regain the "Placement" choice**, standardised into four print-shop conventions: odd-right/even-left (standard duplex, default), odd-left/even-right (reverse duplex), all-right (simplex) and all-left (simplex); odd/even uses the **real page number**. A single "distance from top" still moves every stamped page in sync.
+> The v1.0.17 changes (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 printing fixes are retained.
+> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.18_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
 > The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.17 `setup.exe` SHA-256: `474b5ad78506e4a6b926f281c1fff1c4a81e837bb8d2e1c4a276b21d04c5027d`.
+> v1.0.18 `setup.exe` SHA-256: `dc2f39b9639f8c60e8201882fc2b2ecdbae0db7faee7eca114e9269ed5dad999`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.17_arm64.deb
+sudo dpkg -i lightpdf_1.0.18_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -82,6 +82,11 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.18
+
+- **Default stamp diameter is 42 mm** in both stamp dialogs; old configs and the v1.0.17 40 mm default migrate automatically, while manually chosen values are preserved.
+- **Riding stamp "Placement" is back, standardised**: odd-right/even-left (standard duplex, default), odd-left/even-right (reverse duplex), all-right (simplex), all-left (simplex). Odd/even is decided by the real page number, and the preview reflects the placement.
 
 ### 1.0.17
 

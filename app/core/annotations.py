@@ -198,26 +198,43 @@ def insert_stamp_image(doc: PdfDocument, page_index: int, rect: fitz.Rect,
 
 def insert_riding_stamp(doc: PdfDocument, assignments: list, *,
                         margin_mm: float = 4.23,
-                        top_mm: Optional[float] = None) -> None:
+                        top_mm: Optional[float] = None,
+                        side: str = "alternate") -> None:
     """Place one vertical slice of a seal on the edge of each page (骑缝章).
 
     ``assignments`` items are ``(page_index, png_bytes, width_pt, height_pt,
-    slot_index)``.  ``slot_index`` is the position within one seal group and
-    drives odd/even edges for double-sided printing: slice 0 goes to the right
-    edge of page 1, slice 1 to the left edge of page 2, etc.  Stacking the
-    sheets then reassembles the seal.
+    slot_index)``.  ``slot_index`` is the slice's order inside one seal group
+    (used only for slice order, not for the edge).
 
-    Edge distance and vertical position are given in millimetres.  All pages
-    share the same ``top_mm`` (top edge of the seal, measured from the page
-    top), so a single vertical value moves every stamped page in sync.  When
-    ``top_mm`` is omitted the seal is vertically centred on each page.
+    ``side`` is the binding/placement convention, using standard print-shop
+    terminology:
+
+    * ``"right"``        - every slice on the right edge (simplex);
+    * ``"left"``         - every slice on the left edge (simplex);
+    * ``"alternate"``    - odd pages right / even pages left (standard duplex):
+                           stacking the sheets rebuilds one complete seal;
+    * ``"alternate_rev"`` - odd pages left / even pages right (reverse duplex).
+
+    The odd/even test uses the **1-based page number**, so the convention holds
+    even when the user stamps a non-1-based page range.  Edge distance and
+    vertical position are in millimetres.  All pages share one ``top_mm``
+    (seal top measured from the page top), so a single vertical value moves
+    every stamped page in sync.  ``None`` centres the seal vertically.
     """
     pt_per_mm = 72.0 / 25.4
     margin_pt = float(margin_mm) * pt_per_mm
     for page_index, data, sw, sh, slot in assignments:
         page = doc.page(page_index)
         pr = page.rect
-        right = (slot % 2 == 0)
+        odd_page = (int(page_index) + 1) % 2 == 1
+        if side == "right":
+            right = True
+        elif side == "left":
+            right = False
+        elif side == "alternate_rev":
+            right = not odd_page
+        else:  # "alternate" (default) — standard duplex binding
+            right = odd_page
         x0 = (pr.width - margin_pt - sw) if right else margin_pt
         avail = max(0.0, pr.height - sh)
         if top_mm is None:

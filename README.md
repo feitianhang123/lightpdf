@@ -14,26 +14,27 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.17） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 待本机重建） |
+| Windows（64 位） | `setup.exe`（v1.0.18） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 / v1.0.18 待本机重建） |
 
-> **v1.0.17（Windows 已打包，本地提交，尚未发布 Release）**：图章与骑缝章单位改为**毫米**，
-> 印章大小按**红色印迹直径**计算（不再按整张上传图片）；图章设置新增「去除照片背景」；
-> 骑缝章只需上下调节「距页顶距离」，所有盖章页同步。
-> v1.0.16 / v1.0.15 的打印缩放与方向修复继续保留。
+> **v1.0.18（Windows 已打包，本地提交，尚未发布 Release）**：印章默认直径改为 **42 mm**（国标公章常见尺寸，
+> 旧配置会自动迁移、手动改过的值保留）；骑缝章**恢复「加盖方式」**，按印刷装订习惯统一为
+> 「奇数页右/偶数页左（标准双面）」「奇数页左/偶数页右（反向双面）」「全部右侧（单面）」「全部左侧（单面）」四种，
+> 奇偶按**真实页码**判断；位置仍只需一个「距页顶距离」让所有盖章页同步。
+> v1.0.17（毫米单位、红章直径、照片去背景）、v1.0.16 / v1.0.15 的修复继续保留。
 > **麒麟 `.deb` 仍为 v1.0.16**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
-> `lightpdf_1.0.17_arm64.deb` 后才会包含本版改动。
+> `lightpdf_1.0.18_arm64.deb` 后才会包含本版改动。
 > [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.17 `setup.exe` 校验值（SHA-256）：`474b5ad78506e4a6b926f281c1fff1c4a81e837bb8d2e1c4a276b21d04c5027d`。
+> v1.0.18 `setup.exe` 校验值（SHA-256）：`dc2f39b9639f8c60e8201882fc2b2ecdbae0db7faee7eca114e9269ed5dad999`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.17_arm64.deb
+sudo dpkg -i lightpdf_1.0.18_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -85,6 +86,11 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.18
+
+- **印章默认直径 42 mm**：图章与骑缝章对话框默认值改为 42 mm；旧配置与 v1.0.17 的 40 mm 自动迁移，手动设置的值不变。
+- **骑缝章恢复「加盖方式」并统一标准**：奇数页右/偶数页左（标准双面，默认）、奇数页左/偶数页右（反向双面）、全部右侧（单面）、全部左侧（单面）；奇偶按真实页码判断，预览实时反映落位。
 
 ### 1.0.17
 

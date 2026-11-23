@@ -175,13 +175,17 @@ STRINGS: dict[str, dict[str, str]] = {
     "dlg.riding.range": {"zh": "指定页面（如 1-3,5,8-10）", "en": "Selected pages (e.g. 1-3,5,8-10)"},
     "dlg.riding.group": {"zh": "每枚章覆盖页数", "en": "Pages per seal"},
     "dlg.riding.group_auto": {"zh": "自动（所有页共用一枚章）", "en": "Auto (one seal for all pages)"},
-    "dlg.riding.side": {"zh": "贴放位置", "en": "Edge"},
+    "dlg.riding.side": {"zh": "加盖方式", "en": "Placement"},
     "dlg.riding.side_alternate": {
-        "zh": "左右交替（双面打印，推荐）",
-        "en": "Alternate left / right (duplex, recommended)",
+        "zh": "奇数页右 / 偶数页左（双面装订，标准）",
+        "en": "Odd pages right / even pages left (standard duplex)",
     },
-    "dlg.riding.side_right": {"zh": "全部贴右侧（单面打印）", "en": "All on the right edge (simplex)"},
-    "dlg.riding.side_left": {"zh": "全部贴左侧", "en": "All on the left edge"},
+    "dlg.riding.side_alternate_rev": {
+        "zh": "奇数页左 / 偶数页右（反向双面装订）",
+        "en": "Odd pages left / even pages right (reverse duplex)",
+    },
+    "dlg.riding.side_right": {"zh": "全部盖在右侧（单面）", "en": "All on the right edge (simplex)"},
+    "dlg.riding.side_left": {"zh": "全部盖在左侧（单面）", "en": "All on the left edge (simplex)"},
     "dlg.riding.top": {"zh": "距页顶距离", "en": "Distance from top"},
     "dlg.riding.width": {"zh": "印章直径（红色印迹）", "en": "Seal diameter (red ink)"},
     "dlg.riding.margin": {"zh": "距页边距离", "en": "Distance from edge"},
@@ -199,8 +203,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "{n} pages -> {groups} seal(s), {g} slices each; seal diameter {d} mm, identical vertical position on all pages.",
     },
     "dlg.riding.hint": {
-        "zh": "上方是切片拼接还原效果，下方是各页落位示意（红条）。左右按装订规律交替固定，只需调整「距页顶距离」即可让所有盖章页同步上下移动；纸张叠齐即可拼出完整印章，插入后可用「编辑 → 撤销」一次恢复。",
-        "en": "Top: the reassembled seal. Bottom: where each slice lands (red bars). Left/right edges alternate automatically for binding; a single 'Distance from top' moves every page in sync. Stack the sheets to rebuild the seal. One Undo reverts everything.",
+        "zh": "上方是切片拼接还原效果，下方是各页落位示意（红条）。「加盖方式」决定每页盖在左边缘还是右边缘：双面装订选奇数页右/偶数页左（或反向），单面盖印选全部右侧/左侧。位置只需调整「距页顶距离」，所有盖章页同步上下移动；纸张叠齐即可拼出完整印章，插入后可用「编辑 → 撤销」一次恢复。",
+        "en": "Top: the reassembled seal. Bottom: where each slice lands (red bars). 'Placement' decides the edge per page: use odd-right/even-left (or its reverse) for duplex binding, or all-right/all-left for simplex. A single 'Distance from top' moves every stamped page in sync. Stack the sheets to rebuild the seal. One Undo reverts everything.",
     },
     "msg.riding_done": {
         "zh": "已在 {n} 页插入骑缝章，可用「编辑 → 撤销」恢复。",
