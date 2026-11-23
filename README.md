@@ -14,26 +14,26 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.16） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16） |
+| Windows（64 位） | `setup.exe`（v1.0.17） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.16_arm64.deb`（v1.0.16；v1.0.17 待本机重建） |
 
-> **v1.0.16 已发布**：Windows 与麒麟双平台安装包均已更新到同一版本。
-> Windows 端修复打印时「自定义比例」不生效的问题——选 50% 时内容真的只占半张纸，
-> 预览与实际输出使用同一套缩放计算；「适合 / 缩小过大 / 实际大小 / 自定义%」现在都能在预览里看出区别。
-> v1.0.15 的修复继续保留：**方向只改变纸张，内容保持正向**；需要内容旋转铺满时可勾选「旋转内容适配纸张」。
-> 麒麟 `.deb` 已由用户在 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建，含 v1.0.15 / v1.0.16 全部改动。
-> [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 为当前已发布的最新版本；
+> **v1.0.17（Windows 已打包，本地提交，尚未发布 Release）**：图章与骑缝章单位改为**毫米**，
+> 印章大小按**红色印迹直径**计算（不再按整张上传图片）；图章设置新增「去除照片背景」；
+> 骑缝章只需上下调节「距页顶距离」，所有盖章页同步。
+> v1.0.16 / v1.0.15 的打印缩放与方向修复继续保留。
+> **麒麟 `.deb` 仍为 v1.0.16**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
+> `lightpdf_1.0.17_arm64.deb` 后才会包含本版改动。
+> [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> 校验值（SHA-256）：`setup.exe` `9f6de7f803fe9ada2700999bcff60164a22d63d7f86e7ca07bcbd6095939e225`；
-> `lightpdf_1.0.16_arm64.deb` `e6ade90f5226828e653a45fa4e0851107a389ea44184e3ca5e2f1c06eaeee415`。
+> v1.0.17 `setup.exe` 校验值（SHA-256）：`474b5ad78506e4a6b926f281c1fff1c4a81e837bb8d2e1c4a276b21d04c5027d`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.16_arm64.deb
+sudo dpkg -i lightpdf_1.0.17_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -85,6 +85,13 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.17
+
+- **图章与骑缝章单位改为毫米（mm）**：印章大小、骑缝章距页边距、垂直位置全部用 mm 输入，内部换算成 PDF 点坐标。
+- **印章大小 = 红色印迹直径**：不再是整张上传图片的尺寸；去背景时裁到红章边界，不去背景时按比例反推，红章直径始终等于设定值。
+- **印章照片去除背景**：图章设置新增「去除照片背景」（默认开启），自动去掉纸张底色、保留红色印迹并抗锯齿。
+- **骑缝章只上下调节、多页同步**：去掉左右贴放选择（按装订奇偶自动交替），只用「距页顶距离」一个值让所有盖章页同步上下移动。
 
 ### 1.0.16
 

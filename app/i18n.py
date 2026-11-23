@@ -145,6 +145,12 @@ STRINGS: dict[str, dict[str, str]] = {
     "dlg.stamp.image": {"zh": "图章图片", "en": "Stamp image"},
     "dlg.stamp.choose": {"zh": "选择图片...", "en": "Choose image..."},
     "dlg.stamp.width": {"zh": "显示宽度", "en": "Display width"},
+    "dlg.stamp.diameter": {"zh": "印章直径（红色印迹）", "en": "Seal diameter (red ink)"},
+    "dlg.stamp.remove_bg": {"zh": "去除照片背景", "en": "Remove photo background"},
+    "dlg.stamp.remove_bg_hint": {
+        "zh": "上传印章照片后自动去掉纸张背景、只保留红色印迹，印章直径按红色印迹计算。",
+        "en": "Strip the paper background of a scanned seal and keep only the red ink; the diameter is measured on the red ink itself.",
+    },
     "dlg.stamp.preview": {"zh": "预览", "en": "Preview"},
     "dlg.stamp.image_hint": {
         "zh": "选择图片后会自动切换为「图片图章」；图片会保存到软件配置目录，之后移动或删除原文件也不影响使用。",
@@ -176,13 +182,8 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "dlg.riding.side_right": {"zh": "全部贴右侧（单面打印）", "en": "All on the right edge (simplex)"},
     "dlg.riding.side_left": {"zh": "全部贴左侧", "en": "All on the left edge"},
-    "dlg.riding.vpos": {"zh": "垂直位置", "en": "Vertical position"},
-    "dlg.riding.v_middle": {"zh": "垂直居中", "en": "Center"},
-    "dlg.riding.v_top": {"zh": "靠上", "en": "Top"},
-    "dlg.riding.v_bottom": {"zh": "靠下", "en": "Bottom"},
-    "dlg.riding.v_custom": {"zh": "自定义", "en": "Custom"},
-    "dlg.riding.vpercent": {"zh": "垂直偏移", "en": "Vertical offset"},
-    "dlg.riding.width": {"zh": "印章总宽度", "en": "Seal width"},
+    "dlg.riding.top": {"zh": "距页顶距离", "en": "Distance from top"},
+    "dlg.riding.width": {"zh": "印章直径（红色印迹）", "en": "Seal diameter (red ink)"},
     "dlg.riding.margin": {"zh": "距页边距离", "en": "Distance from edge"},
     "dlg.riding.overlap": {"zh": "切片重叠补偿", "en": "Slice overlap"},
     "dlg.riding.reverse": {
@@ -194,12 +195,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "No valid pages selected. Check the page range.",
     },
     "dlg.riding.info": {
-        "zh": "共 {n} 页 → {groups} 枚章，每枚切 {g} 片，每片约 {w} × {h} pt。",
-        "en": "{n} pages -> {groups} seal(s), {g} slices each, about {w} x {h} pt per slice.",
+        "zh": "共 {n} 页 → {groups} 枚章，每枚切 {g} 片；印章直径 {d} mm，所有页上下位置一致。",
+        "en": "{n} pages -> {groups} seal(s), {g} slices each; seal diameter {d} mm, identical vertical position on all pages.",
     },
     "dlg.riding.hint": {
-        "zh": "上方是切片拼接还原效果，下方是各页落位示意（红条）。双面打印请用「左右交替」，纸张叠齐即可拼出完整印章；插入后可用「编辑 → 撤销」一次恢复。",
-        "en": "Top: the reassembled seal. Bottom: where each slice lands on the pages (red bars). For duplex printing use 'Alternate'; stacking the sheets rebuilds the full seal. One Undo reverts everything.",
+        "zh": "上方是切片拼接还原效果，下方是各页落位示意（红条）。左右按装订规律交替固定，只需调整「距页顶距离」即可让所有盖章页同步上下移动；纸张叠齐即可拼出完整印章，插入后可用「编辑 → 撤销」一次恢复。",
+        "en": "Top: the reassembled seal. Bottom: where each slice lands (red bars). Left/right edges alternate automatically for binding; a single 'Distance from top' moves every page in sync. Stack the sheets to rebuild the seal. One Undo reverts everything.",
     },
     "msg.riding_done": {
         "zh": "已在 {n} 页插入骑缝章，可用「编辑 → 撤销」恢复。",

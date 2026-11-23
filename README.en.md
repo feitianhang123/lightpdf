@@ -12,24 +12,22 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.16) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16) |
+| Windows (64-bit) | `setup.exe` (v1.0.17) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.16_arm64.deb` (v1.0.16; v1.0.17 to be rebuilt) |
 
-> **v1.0.16 is published**: Windows and Kylin installers are both at the same version.
-> On Windows, printing's Custom Scale finally works: at 50% the content really occupies half the sheet in both the preview and the printed output (the old code shrank the image and then enlarged it back to fill the page). Fit / Shrink / Actual size / Custom % all share one calculation, so the preview matches the result.
-> The v1.0.15 fix is retained: orientation changes the **sheet only**, while content keeps its original direction. Opt into "rotate content to fit paper" with the checkbox (off by default).
-> The Kylin `.deb` was rebuilt by the user on an aarch64 machine with `packaging/linux/build-kylin.sh` and includes all v1.0.15 / v1.0.16 changes.
-> The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) is the latest published version. The
+> **v1.0.17 (Windows built, committed locally, Release not yet published)**: stamps and riding stamps now use **millimetres**; stamp size is measured on the **red ink diameter** (not the whole uploaded photo); stamp settings gained a "Remove photo background" toggle; and riding stamps are positioned with a single "distance from top" that moves every stamped page in sync.
+> The v1.0.16 / v1.0.15 printing scale and orientation fixes are retained.
+> The Kylin `.deb` is still **v1.0.16** — rebuild `lightpdf_1.0.17_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this version.
+> The [v1.0.16 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.16) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> SHA-256: `setup.exe` `9f6de7f803fe9ada2700999bcff60164a22d63d7f86e7ca07bcbd6095939e225`;
-> `lightpdf_1.0.16_arm64.deb` `e6ade90f5226828e653a45fa4e0851107a389ea44184e3ca5e2f1c06eaeee415`.
+> v1.0.17 `setup.exe` SHA-256: `474b5ad78506e4a6b926f281c1fff1c4a81e837bb8d2e1c4a276b21d04c5027d`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.16_arm64.deb
+sudo dpkg -i lightpdf_1.0.17_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -84,6 +82,13 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.17
+
+- **Stamps and riding stamps now use millimetres** for seal size, edge distance and vertical position, converted internally to PDF points.
+- **Stamp size = red ink diameter**, not the whole uploaded photo. With background removal the image is cropped to the red seal; without it, scaling is compensated by the ink-to-canvas ratio, so the red seal always measures the requested diameter.
+- **Stamp photo background removal**: a "Remove photo background" toggle (on by default) strips the paper colour and keeps the red ink with anti-aliased edges.
+- **Riding stamp is vertical-only and page-synchronised**: the left/right edge choice is gone (edges alternate automatically by binding parity); one "distance from top" value moves every stamped page together.
 
 ### 1.0.16
 

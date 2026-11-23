@@ -2134,8 +2134,14 @@ class StampSettingsDialog(QDialog):
         self.image.setToolTip(tr("dlg.stamp.imported", name=""))
         self.choose = QPushButton(tr("dlg.stamp.choose"))
         self.choose.clicked.connect(self._choose_image)
-        self.image_w = QSpinBox(); self.image_w.setRange(20, 2000)
-        self.image_w.setValue(int(self.cfg.get("image_width", 160)))
+        self.image_w = QDoubleSpinBox()
+        self.image_w.setRange(5.0, 200.0)
+        self.image_w.setDecimals(1); self.image_w.setSingleStep(1.0)
+        self.image_w.setSuffix(" mm")
+        self.image_w.setValue(float(self.cfg.get("stamp_diameter_mm", 40.0)))
+        self.remove_bg = QCheckBox(tr("dlg.stamp.remove_bg"))
+        self.remove_bg.setChecked(bool(self.cfg.get("remove_bg", True)))
+        self.remove_bg.setToolTip(tr("dlg.stamp.remove_bg_hint"))
 
         # colour buttons
         self.btn_text_color = self._color_button("text_color", self.cfg.get("text_color", "#C00000"))
@@ -2162,7 +2168,8 @@ class StampSettingsDialog(QDialog):
         il.addWidget(self.image); il.addWidget(self.choose)
         form.addRow(tr("dlg.stamp.image"), img_row)
         form.addRow("", QLabel(tr("dlg.stamp.image_hint")))
-        form.addRow(tr("dlg.stamp.width"), self.image_w)
+        form.addRow("", self.remove_bg)
+        form.addRow(tr("dlg.stamp.diameter"), self.image_w)
 
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         bb.accepted.connect(self.accept)
@@ -2182,6 +2189,7 @@ class StampSettingsDialog(QDialog):
             w.valueChanged.connect(self._refresh)
         self.text.textChanged.connect(self._refresh)
         self.transparent.toggled.connect(self._refresh)
+        self.remove_bg.toggled.connect(self._refresh)
         self.image.textChanged.connect(self._on_image_text_changed)
         self._sync()
 
@@ -2252,7 +2260,8 @@ class StampSettingsDialog(QDialog):
             "transparent": self.transparent.isChecked(),
             "padding": self.padding.value(),
             "image": self.image.text().strip(),
-            "image_width": self.image_w.value(),
+            "stamp_diameter_mm": self.image_w.value(),
+            "remove_bg": self.remove_bg.isChecked(),
         }
 
     def _refresh(self) -> None:
@@ -2321,24 +2330,23 @@ class RidingStampDialog(QDialog):
         self.group.setSpecialValueText(tr("dlg.riding.group_auto"))
 
         # ---------------------------------------------------------- layout
-        self.side = QComboBox()
-        self.side.addItem(tr("dlg.riding.side_alternate"), "alternate")
-        self.side.addItem(tr("dlg.riding.side_right"), "right")
-        self.side.addItem(tr("dlg.riding.side_left"), "left")
-        self.vpos = QComboBox()
-        self.vpos.addItem(tr("dlg.riding.v_middle"), "middle")
-        self.vpos.addItem(tr("dlg.riding.v_top"), "top")
-        self.vpos.addItem(tr("dlg.riding.v_bottom"), "bottom")
-        self.vpos.addItem(tr("dlg.riding.v_custom"), "custom")
-        self.vpercent = QSpinBox()
-        self.vpercent.setRange(0, 100); self.vpercent.setValue(50)
-        self.vpercent.setSuffix(" %")
-        self.stamp_w = QSpinBox()
-        self.stamp_w.setRange(40, 600); self.stamp_w.setValue(120)
-        self.stamp_w.setSuffix(" pt")
-        self.margin = QSpinBox()
-        self.margin.setRange(0, 120); self.margin.setValue(12)
-        self.margin.setSuffix(" pt")
+        # Position is vertical-only: the seal's odd/even edge is fixed by the
+        # binding logic, and every stamped page shares one top offset in mm.
+        self.top_mm = QDoubleSpinBox()
+        self.top_mm.setRange(0.0, 600.0)
+        self.top_mm.setDecimals(1); self.top_mm.setSingleStep(1.0)
+        self.top_mm.setValue(148.5)          # A4 vertical centre
+        self.top_mm.setSuffix(" mm")
+        self.stamp_w = QDoubleSpinBox()
+        self.stamp_w.setRange(5.0, 200.0)
+        self.stamp_w.setDecimals(1); self.stamp_w.setSingleStep(1.0)
+        self.stamp_w.setValue(40.0)
+        self.stamp_w.setSuffix(" mm")
+        self.margin = QDoubleSpinBox()
+        self.margin.setRange(0.0, 100.0)
+        self.margin.setDecimals(1); self.margin.setSingleStep(0.5)
+        self.margin.setValue(4.0)
+        self.margin.setSuffix(" mm")
         self.overlap = QSpinBox()
         self.overlap.setRange(0, 30); self.overlap.setValue(0)
         self.overlap.setSuffix(" %")
@@ -2360,9 +2368,7 @@ class RidingStampDialog(QDialog):
         form.addRow(tr("dlg.riding.scope"), self.scope)
         form.addRow(tr("dlg.rotate.pages"), self.pages)
         form.addRow(tr("dlg.riding.group"), self.group)
-        form.addRow(tr("dlg.riding.side"), self.side)
-        form.addRow(tr("dlg.riding.vpos"), self.vpos)
-        form.addRow(tr("dlg.riding.vpercent"), self.vpercent)
+        form.addRow(tr("dlg.riding.top"), self.top_mm)
         form.addRow(tr("dlg.riding.width"), self.stamp_w)
         form.addRow(tr("dlg.riding.margin"), self.margin)
         form.addRow(tr("dlg.riding.overlap"), self.overlap)
@@ -2382,12 +2388,9 @@ class RidingStampDialog(QDialog):
 
         self.source.currentIndexChanged.connect(self._sync)
         self.scope.currentIndexChanged.connect(self._sync)
-        self.vpos.currentIndexChanged.connect(self._sync)
-        for w in (self.side,):
-            w.currentIndexChanged.connect(self._refresh)
         for w in (self.pages,):
             w.textChanged.connect(self._refresh)
-        for w in (self.group, self.stamp_w, self.margin, self.overlap, self.vpercent):
+        for w in (self.group, self.top_mm, self.stamp_w, self.margin, self.overlap):
             w.valueChanged.connect(self._refresh)
         self.reverse.toggled.connect(self._refresh)
         self._sync()
@@ -2396,7 +2399,6 @@ class RidingStampDialog(QDialog):
     def _sync(self) -> None:
         self.choose.setEnabled(self.source.currentData() == "file")
         self.pages.setEnabled(self.scope.currentData() == "range")
-        self.vpercent.setEnabled(self.vpos.currentData() == "custom")
         self._refresh()
 
     def _choose_image(self) -> None:
@@ -2449,7 +2451,7 @@ class RidingStampDialog(QDialog):
                 raise self.stamps.StampImageError(tr("dlg.riding.no_file"))
             cfg["mode"] = "image"
             cfg["image"] = path
-        cfg["image_width"] = self.stamp_w.value()
+        cfg["stamp_diameter_mm"] = self.stamp_w.value()
         return cfg
 
     def group_size(self, n: int) -> int:
@@ -2471,8 +2473,7 @@ class RidingStampDialog(QDialog):
             chunk = pages[start:start + g]
             k = len(chunk)
             if k not in cache:
-                cache[k] = self.stamps.render_stamp_slices(
-                    cfg, k, ov, float(self.stamp_w.value()))
+                cache[k] = self.stamps.render_stamp_slices(cfg, k, ov)
             slices = list(cache[k])
             if rev:
                 slices.reverse()
@@ -2482,10 +2483,8 @@ class RidingStampDialog(QDialog):
         return pages, out
 
     def options(self) -> dict:
-        return {"side": self.side.currentData(),
-                "vpos": self.vpos.currentData(),
-                "margin": float(self.margin.value()),
-                "vpercent": self.vpercent.value() / 100.0}
+        return {"margin_mm": float(self.margin.value()),
+                "top_mm": float(self.top_mm.value())}
 
     # ------------------------------------------------------------- preview
     def _refresh(self) -> None:
@@ -2525,30 +2524,24 @@ class RidingStampDialog(QDialog):
         ph = 68
         gap = 6
         pw = max(14, min(46, (w_px - 20) // max(1, rows) - gap))
-        side = self.side.currentData()
-        vpos = self.vpos.currentData()
-        vp = self.vpercent.value() / 100.0
         font = QFont(); font.setPointSize(7)
         p.setFont(font)
+        # Reference sheet height for the thumbnail (A4 = 297 mm) so the
+        # single top_mm value can be drawn at the same spot on every page.
+        ref_h_mm = 297.0
         for k in range(rows):
             px = 10 + k * (pw + gap)
             p.setPen(QPen(QColor("#B9CDBB")))
             p.fillRect(QRectF(px, base_y, pw, ph), QColor("#FBFCFA"))
             p.drawRect(QRectF(px, base_y, pw, ph))
-            right = (k % 2 == 0) if side == "alternate" else (side == "right")
+            right = (k % 2 == 0)          # fixed odd/even edge for binding
             sw_pt = first[k % g][2]
             strip_w = max(2, min(pw - 4, int(sw_pt * pw / 595.0 * 2.0)))
             sx = (px + pw - strip_w - 2) if right else (px + 2)
             strip_h = max(10, min(ph - 4, int(h_pt * ph / 842.0)))
-            avail = ph - strip_h
-            if vpos == "top":
-                sy = base_y + 2
-            elif vpos == "bottom":
-                sy = base_y + max(0, avail - 2)
-            elif vpos == "custom":
-                sy = base_y + avail * vp
-            else:
-                sy = base_y + avail / 2
+            # Same vertical position on every page: top_mm measured from top.
+            y_mm = max(0.0, min(ref_h_mm, float(self.top_mm.value())))
+            sy = base_y + (ph - strip_h) * (y_mm / ref_h_mm)
             p.setPen(Qt.NoPen)
             p.fillRect(QRectF(sx, sy, strip_w, strip_h), QColor("#C00000"))
             p.setPen(QColor("#4E7D57"))
@@ -2556,8 +2549,9 @@ class RidingStampDialog(QDialog):
         p.end()
         self.preview.setText("")
         self.preview.setPixmap(QPixmap.fromImage(canvas))
-        self.info.setText(tr("dlg.riding.info", n=len(pages), g=g,
-                             w=round(first[0][2], 1), h=round(h_pt, 1),
+        self.info.setText(tr("dlg.riding.info",
+                             n=len(pages), g=g,
+                             d=round(float(self.stamp_w.value()), 1),
                              groups=(len(pages) + g - 1) // g))
 
 
