@@ -28,7 +28,7 @@
 >
 > v1.0.20 校验值（SHA-256）：
 > `setup.exe` = `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`；
-> `lightpdf_1.0.20_arm64.deb` = `84915277106ae4c6dd6e3d4cc4650f1824651b893e81b71553a71c88ad6b7d37`。
+> `lightpdf_1.0.20_arm64.deb` = `f4d08321ba38cd5efad477706df7dab7c6ac2db947650fab42be9e50ce899a17`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 

@@ -55,11 +55,12 @@ v1.0.20 在以下三个入口为每个切片写入独立的 PNG 文本块（`Lig
 | 文件 | 平台 | 大小（字节） | SHA-256 |
 |---|---|---|---|
 | `setup.exe` | Windows 64 位 | 94,208,991 | `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac` |
-| `lightpdf_1.0.20_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,303,548 | `84915277106ae4c6dd6e3d4cc4650f1824651b893e81b71553a71c88ad6b7d37` |
+| `lightpdf_1.0.20_arm64.deb` | 银河麒麟 / Linux aarch64 | 132,515,524 | `f4d08321ba38cd5efad477706df7dab7c6ac2db947650fab42be9e50ce899a17` |
 | `lightpdf-linux-build-1.0.20.zip` | 麒麟本机离线构建用源码快照 | 1,286,759 | `cbfb953d122426ad8eb77c10fb47e1b510b88090951f0dd0b7b555886f889a64` |
 
 - `setup.exe` 用 Python 3.10 + PyInstaller 6.22.3 + Inno Setup 7 重新打包。
 - 麒麟 `.deb` 已由用户在 aarch64 本机重建：control 为 `Version: 1.0.20 / arm64`，并核验内嵌修复逻辑（非旧包改名）。
+  - 2026-11-24 用户再次重新打包同名包（位置/文件名不变）：新包 132,515,524 B（较此前 67,303,548 B 增大，因把 PySide6/PIL 等运行库一并打进 onedir，属正常构建差异），已替换 Release 资产并核验 digest；control 仍为 1.0.20/arm64，PYZ 内 `unique_png_bytes` / `LightpdfRidingGroup` / 版本 `1.0.20` 标记齐全。
 - `lightpdf-linux-build-1.0.20.zip` 为**源码快照，非安装包**，供麒麟本机离线构建。
 - 已 push 并发布 GitHub Release。
 
