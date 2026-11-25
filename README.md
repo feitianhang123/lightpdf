@@ -14,23 +14,24 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.22） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.22 待本机重建） |
+| Windows（64 位） | `setup.exe`（v1.0.23） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.23 待本机重建） |
 
-> **v1.0.22（Windows 已打包，本地提交，尚未发布 Release）**：**彻底修复**打印方向 / 双面翻转不生效——
-> v1.0.21 的 QPrinter 层面修正在 iR C3020 等网络复合机上无效（驱动不写 DEVMODE、用自身默认横向）。
-> 本版 Windows 物理打印改用 **原生 GDI + 完整 DEVMODE**，方向 / 双面 / A4 直接写进驱动（与 Foxit 打印方式一致），
-> 内容布局仍复用现有渲染逻辑，缩放 / 小册子 / N-up / 平铺不受影响。
+> **v1.0.23（Windows 已打包，本地提交，尚未发布 Release）**：修复 v1.0.22 原生 GDI 打印时
+> **多页文档只有最后一页有内容、前面页全空白**的问题——换页时 QPainter 未切到新画布、
+> DIB 位图源数据过早释放，两处均已修复。
+> v1.0.22 引入的 **原生 GDI + 完整 DEVMODE**（方向 / 双面 / A4 直接写进驱动，与 Foxit 打印方式一致）、
 > v1.0.21（QPrinter 方向兜底 + 双面信号接线）、v1.0.20（骑缝章崩溃修复）、v1.0.19 / v1.0.18 / v1.0.17 /
 > v1.0.16 / v1.0.15 的改动继续保留。
 > 本次为 **Windows 专属修复**；**麒麟 `.deb` 仍为 v1.0.20**，可在 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.22_arm64.deb` 保持版本一致（麒麟不走 Windows 驱动，不受此问题影响）。
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.23_arm64.deb` 保持版本一致（麒麟不走 Windows 驱动，不受此问题影响）。
 > [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.22 校验值（SHA-256）：
-> `setup.exe` = `44d9cf05ed9baad0cac3ca401e0ec9565aeb07cbfc2111f1cdeea24a9c253206`。
+> v1.0.23 校验值（SHA-256）：
+> `setup.exe` = `9f343d8851a8a631df3cf01e4b741b40217b2df19819b5756587cf4312570b2d`；
+> `lightpdf-linux-build-1.0.23.zip` = `ac4f90ec6367d0fc7691a957b1a93e6f3a5f5b0f7ec3595f3f38b4b60e5d7685`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
@@ -88,6 +89,11 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.23
+
+- **修复 GDI 打印多页只有最后一页有内容**：换页时 QPainter 未切到新画布、DIB 位图源数据过早释放，两处均已修复；4 页 / 双面打印空白页问题根因消除。
+- 详见 [`docs/release-notes-v1.0.23.md`](docs/release-notes-v1.0.23.md)。
 
 ### 1.0.22
 

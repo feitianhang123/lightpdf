@@ -12,16 +12,17 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.22) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.22 to be rebuilt) |
+| Windows (64-bit) | `setup.exe` (v1.0.23) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.23 to be rebuilt) |
 
-> **v1.0.22 (Windows built, committed locally, Release not yet published)**: thoroughly fixes print orientation / duplex flips being ignored. v1.0.21's QPrinter-level fix did not work on network copiers such as the iR C3020 (the driver ignores the settings and falls back to its own default landscape). This version switches Windows physical printing to **native GDI with a complete DEVMODE**, writing orientation / duplex / A4 straight into the driver (the same way Foxit prints). Content layout still reuses the existing rendering logic, so scaling / booklet / N-up / tiling are unaffected.
-> The v1.0.21 fixes (QPrinter orientation fallback + duplex signal wiring), v1.0.20 (riding-stamp dialog crash), v1.0.19 / v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
-> This is a **Windows-only fix**; the Kylin `.deb` is still **v1.0.20**. You may rebuild `lightpdf_1.0.22_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to keep versions in sync (Kylin does not use Windows drivers and is unaffected).
+> **v1.0.23 (Windows built, committed locally, Release not yet published)**: fixes v1.0.22's native-GDI printing bug where **only the last page of a multi-page document printed content and earlier pages came out blank** — the QPainter was not switched to the new canvas on page breaks, and the DIB bitmap source data was released too early. Both are fixed.
+> The v1.0.22 native GDI + complete DEVMODE fix (orientation / duplex / A4 written directly into the driver, same way Foxit prints), v1.0.21 fixes (QPrinter orientation fallback + duplex signal wiring), v1.0.20 (riding-stamp dialog crash), v1.0.19 / v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
+> This is a **Windows-only fix**; the Kylin `.deb` is still **v1.0.20**. You may rebuild `lightpdf_1.0.23_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to keep versions in sync (Kylin does not use Windows drivers and is unaffected).
 > The [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.22 SHA-256: `setup.exe` = `44d9cf05ed9baad0cac3ca401e0ec9565aeb07cbfc2111f1cdeea24a9c253206`.
+> v1.0.23 SHA-256: `setup.exe` = `9f343d8851a8a631df3cf01e4b741b40217b2df19819b5756587cf4312570b2d`;
+> `lightpdf-linux-build-1.0.23.zip` = `ac4f90ec6367d0fc7691a957b1a93e6f3a5f5b0f7ec3595f3f38b4b60e5d7685`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
@@ -82,6 +83,11 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.23
+
+- **Fixed multi-page GDI printing where only the last page had content**: the QPainter was not switched to the new canvas on page breaks and the DIB bitmap source data was released too early; both are fixed, eliminating blank pages in 4-page / duplex printing.
+- See [`docs/release-notes-v1.0.23.md`](docs/release-notes-v1.0.23.md).
 
 ### 1.0.22
 

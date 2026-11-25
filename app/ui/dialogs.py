@@ -1812,7 +1812,7 @@ class PrintDialog(QDialog):
                 cw, ch = ch, cw
             dpi = 300
             canvas = win_print.CanvasPrinter(cw, ch, canvas_dpi)
-            painter = QPainter(canvas.canvas)
+            painter = canvas.painter   # 由 CanvasPrinter 持有，换页时自动切换画布
             if not painter.isActive():
                 return False
             annots = self._annot_mode()

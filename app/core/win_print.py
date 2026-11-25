@@ -145,21 +145,22 @@ def is_available() -> bool:
 
 
 class CanvasPrinter:
-    """把“逐页画布”收集起来的轻量适配器。
+    """逐页画布适配器：QPrinter 的轻量替身，供打印布局代码原样复用。
 
-    只实现打印布局代码用到的 ``resolution()`` / ``newPage()`` 两个接口；
-    ``newPage()`` 把当前 QImage 画布存入 pages 并新建一张同尺寸白画布。
-    这样现有的 _print_plain / _print_sides / _print_tiled 逻辑可原样复用。
+    关键：QPainter 必须由本类持有，newPage() 时 end() 当前画布、begin() 新画布。
+    v1.0.22 初版让调用方自己 QPainter(canvas.canvas)，newPage() 只换 _current，
+    painter 一直画在第一张 QImage 上 —— 实测「4 页只有最后一页有内容」。
     """
 
     def __init__(self, width: int, height: int, dpi: int = 300):
-        from PySide6.QtGui import QImage
+        from PySide6.QtGui import QImage, QPainter
         self.width = int(width)
         self.height = int(height)
         self._dpi = int(dpi)
         self.pages = []
         self._current = QImage(self.width, self.height, QImage.Format_RGB32)
         self._current.fill(0xFFFFFFFF)
+        self.painter = QPainter(self._current)   # 由本类持有，换页时切换设备
 
     @property
     def canvas(self):
@@ -170,11 +171,16 @@ class CanvasPrinter:
 
     def newPage(self):
         from PySide6.QtGui import QImage
+        hints = self.painter.renderHints()
         self.pages.append(self._current)
+        self.painter.end()                  # 结束上一页的绘制
         self._current = QImage(self.width, self.height, QImage.Format_RGB32)
         self._current.fill(0xFFFFFFFF)
+        self.painter.begin(self._current)   # 关键：切到新画布，否则后续页全画到第一页
+        self.painter.setRenderHints(hints)
 
     def finish(self):
+        self.painter.end()
         self.pages.append(self._current)
         return self.pages
 
@@ -204,9 +210,13 @@ def _build_devmode(printer: str, landscape: bool, duplex: str, copies: int):
 
 
 def _stretch_image(hdc, qimage, x, y, w, h) -> bool:
-    """把 QImage 以 32bpp top-down DIB 贴到 DC 的 (x,y,w,h)。"""
-    from PySide6.QtGui import QImage
-    img = qimage.convertToFormat(QImage.Format_ARGB32)
+    """把调用方已转成 ARGB32 的 QImage 以 32bpp top-down DIB 贴到 DC。
+
+    源数据指针在 StretchDIBits 返回后仍可能被驱动引用（尤其 EndPage 阶段），
+    因此调用方必须保证 qimage 存活到 EndDoc 之后；这里不再 convertToFormat
+    制造临时对象（v1.0.22 初版每页临时对象析构导致前面页空白）。
+    """
+    img = qimage
     bi = BITMAPINFOHEADER()
     bi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
     bi.biWidth = img.width()
@@ -285,7 +295,12 @@ def print_images(printer: str, images, *, landscape: bool, duplex: str = "none",
             raise OSError(f"StartDoc failed: {printer}")
         started = True
         x, y, w, h = printable_rect(hdc)
-        for img in images:
+        # 一次性转换并持有所有页的 ARGB32 位图，直到 EndDoc 之后才释放。
+        # iR C3020 等驱动在 EndPage / EndDoc 阶段才真正读取 StretchDIBits 的源数据，
+        # 若每页临时 QImage 在 _stretch_image 返回时析构，前面页就会打印成空白。
+        from PySide6.QtGui import QImage as _QImage
+        dib_images = [im.convertToFormat(_QImage.Format_ARGB32) for im in images]
+        for img in dib_images:
             if _gdi32.StartPage(hdc) <= 0:
                 raise OSError("StartPage failed")
             if not _stretch_image(hdc, img, x, y, w, h):
@@ -297,6 +312,8 @@ def print_images(printer: str, images, *, landscape: bool, duplex: str = "none",
         if _gdi32.EndDoc(hdc) <= 0:
             raise OSError("EndDoc failed")
         started = False
+        # dib_images 的引用一直保持到这里，确保所有页 DIB 源数据到 EndDoc 都有效
+        del dib_images
     finally:
         if hdc:
             if started:
