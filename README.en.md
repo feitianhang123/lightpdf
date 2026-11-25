@@ -12,17 +12,16 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.20) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20) |
+| Windows (64-bit) | `setup.exe` (v1.0.21) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.21 to be rebuilt) |
 
-> **v1.0.20 (Windows and Kylin both built and published)**: fixes "Annotate → Insert Riding Stamp" doing nothing on the first click and crashing on the second. The preview still unpacked a slice as five fields although v1.0.19 added a sixth (seal sequence), so dialog construction raised before the window appeared; both 5- and 6-field slices are now accepted. Also fixes a case where identical slice images were de-duplicated onto one PDF xref, causing later seals to overwrite earlier riding-group tags.
-> The v1.0.19 changes (vertical-only riding slices, whole-seal linkage and persistence), v1.0.18 (42 mm default diameter, four placement conventions), v1.0.17 (millimetres, red-ink diameter, photo background removal) and the v1.0.16 / v1.0.15 fixes are retained.
-> The Kylin `.deb` was rebuilt on an aarch64 machine: control reads `Version: 1.0.20 / arm64`, and the embedded fixes were verified.
-> The [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) is now the latest published version. The
+> **v1.0.21 (Windows built, committed locally, Release not yet published)**: fixes print orientation being ignored ("every direction prints landscape"). The fallback-retry branch applied no page setup at all and fell back to the driver's default landscape; now both the full and fallback branches explicitly set A4 paper plus the selected orientation. Also restores the duplex "long-edge / short-edge flip" options by wiring up `duplex_check.toggled`.
+> The v1.0.20 fixes (riding-stamp dialog crash and multi-seal group overwrite), v1.0.19 (vertical-only riding slices with whole-seal linkage), v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
+> The Kylin `.deb` is still **v1.0.20** — rebuild `lightpdf_1.0.21_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this fix.
+> The [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.20 SHA-256: `setup.exe` = `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`;
-> `lightpdf_1.0.20_arm64.deb` = `f4d08321ba38cd5efad477706df7dab7c6ac2db947650fab42be9e50ce899a17`.
+> v1.0.21 SHA-256: `setup.exe` = `44fec26b1fcc99ae01a34bd7c5ac3653a7593450f94ac2bc884878bc86bf5ddf`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
@@ -83,6 +82,12 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.21
+
+- **Fixed print orientation being ignored**: the fallback-retry branch applied no page setup and fell back to the driver's default landscape. Both the full and fallback branches now explicitly set A4 paper plus the selected orientation, so preview and print match.
+- **Fixed duplex flip options being unselectable**: wired up `duplex_check.toggled`, so long-edge / short-edge flip becomes available when duplex is checked.
+- See [`docs/release-notes-v1.0.21.md`](docs/release-notes-v1.0.21.md).
 
 ### 1.0.20
 

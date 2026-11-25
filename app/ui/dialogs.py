@@ -1171,6 +1171,8 @@ class PrintDialog(QDialog):
 
         self.tofile_check.toggled.connect(self._sync_file)
         self.file_btn.clicked.connect(self._pick_file)
+        # 勾选/取消「双面打印」时同步启用/禁用长边、短边翻转
+        self.duplex_check.toggled.connect(self._sync_duplex)
 
         self.prev_btn.clicked.connect(lambda: self._preview_step(-1))
         self.next_btn.clicked.connect(lambda: self._preview_step(1))
@@ -1725,9 +1727,35 @@ class PrintDialog(QDialog):
             painter.drawLine(x, y, x, y + dy * ln)
         painter.restore()
 
+    def _apply_orientation(self, pr) -> None:
+        """把界面所选纸张方向施加到 QPrinter，并保证纸张为标准 A4。
+
+        关键：必须显式 setPageSize(A4)，不能沿用构造时的 pageLayout —— 某些驱动
+        （如网络复合机）默认纸张是横向，只改方向不改尺寸会被驱动再次翻回横向。
+        用 setPageLayout 一次性写入 尺寸+方向+页边距，JPY/A4 都能正确对应。
+        """
+        orient = QPageLayout.Landscape if self._landscape() else QPageLayout.Portrait
+        size = QPageSize(QPageSize.A4)
+        try:
+            base = pr.pageLayout()
+            pr.setPageLayout(QPageLayout(size, orient, base.margins(), base.units()))
+        except Exception:  # noqa: BLE001
+            # 个别 Qt 版本不接受整包设置，退化为分步设置
+            try:
+                pr.setPageSize(size)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                pr.setPageOrientation(orient)
+            except Exception:  # noqa: BLE001
+                pass
+
     def _make_printer(self, name: str, full: bool):
-        """构造 QPrinter。full=False 时不施加任何页面/双面设置，完全用驱动默认值，
-        用于某些驱动（如网络复合机）拒绝自定义 DEVMODE 时的降级重试。"""
+        """构造 QPrinter。
+
+        full=True 施加完整设置；full=False 降级重试时，方向/纸张仍然保留（否则
+        驱动默认横向会覆盖用户选择，出现“方向怎么选打印都一样”），仅跳过最容易被
+        驱动拒绝的双面与 collate 设置。"""
         pr = QPrinter(QPrinter.HighResolution if full else QPrinter.ScreenResolution)
         if name:
             pr.setPrinterName(name)
@@ -1740,26 +1768,21 @@ class PrintDialog(QDialog):
             pr.setDocName("lightpdf")
         except Exception:  # noqa: BLE001
             pass
-        if not full:
-            try:
-                pr.setCopyCount(self.copies_spin.value())
-            except Exception:  # noqa: BLE001
-                pass
-            return pr
-        orient = QPageLayout.Landscape if self._landscape() else QPageLayout.Portrait
-        base = pr.pageLayout()
+        # 方向/纸张：两个分支都必须设置，否则降级后回退到驱动默认横向
+        self._apply_orientation(pr)
+        # 份数属于基础设置，降级也保留
         try:
-            pr.setPageLayout(QPageLayout(base.pageSize(), orient,
-                                         base.margins(), base.units()))
+            pr.setCopyCount(self.copies_spin.value())
         except Exception:  # noqa: BLE001
             pass
+        if not full:
+            return pr
         dm = QPrinter.DuplexMode
         if self.duplex_check.isChecked():
             duplex = dm.DuplexShortSide if self.flip_short.isChecked() else dm.DuplexLongSide
         else:
             duplex = dm.DuplexNone
         for fn in (lambda: pr.setDuplex(duplex),
-                   lambda: pr.setCopyCount(self.copies_spin.value()),
                    lambda: pr.setCollateCopies(self.collate_check.isChecked())):
             try:
                 fn()

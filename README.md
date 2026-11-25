@@ -14,27 +14,28 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.20） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20） |
+| Windows（64 位） | `setup.exe`（v1.0.21） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.21 待本机重建） |
 
-> **v1.0.20（Windows 与麒麟双平台已构建并发布 Release）**：修复「批注 → 插入骑缝章」点击后对话框不弹出、
-> 再次点击导致闪退的问题；同时修复多枚骑缝章图片相同时 PDF 复用同一图片对象、分组标记互相覆盖的隐患。
-> v1.0.19（骑缝章切片只能上下移动、同章整组联动并持久化）、v1.0.18（42 mm 默认直径、四种加盖方式）、
-> v1.0.17（毫米单位、红章直径、照片去背景）、v1.0.16 / v1.0.15 的改动继续保留。
-> 麒麟 `.deb` 已由用户在 aarch64 本机重建，control 为 `Version: 1.0.20 / arm64`，并核验内嵌修复逻辑。
-> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 为当前最新版本；
+> **v1.0.21（Windows 已打包，本地提交，尚未发布 Release）**：修复打印方向「怎么选都是横向」——
+> 降级重试分支原本完全不施加页面设置，会退回驱动默认横向；现在完整分支与降级分支都显式设置 A4 纸张 + 所选方向。
+> 同时修复双面打印的「长边 / 短边翻转」无法选择——补上 `duplex_check.toggled` 信号接线。
+> v1.0.20（骑缝章崩溃与多章分组覆盖修复）、v1.0.19（骑缝章切片上下联动）、v1.0.18 / v1.0.17 /
+> v1.0.16 / v1.0.15 的改动继续保留。
+> **麒麟 `.deb` 仍为 v1.0.21 之前的 v1.0.20**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
+> `lightpdf_1.0.21_arm64.deb` 后才会包含本版打印修复。
+> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.20 校验值（SHA-256）：
-> `setup.exe` = `5b83b27af19b6e9cdefb782ff2c95d1e1081bf896e6658e89a878384af0d5bac`；
-> `lightpdf_1.0.20_arm64.deb` = `f4d08321ba38cd5efad477706df7dab7c6ac2db947650fab42be9e50ce899a17`。
+> v1.0.21 校验值（SHA-256）：
+> `setup.exe` = `44fec26b1fcc99ae01a34bd7c5ac3653a7593450f94ac2bc884878bc86bf5ddf`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.20_arm64.deb
+sudo dpkg -i lightpdf_1.0.20_arm64.deb   # 重建 1.0.21 后改为 lightpdf_1.0.21_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -86,6 +87,12 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.21
+
+- **修复打印方向怎么选都一样**：降级重试分支原本不施加页面设置、退回驱动默认横向；现在完整分支与降级分支都显式设置 A4 纸张 + 所选方向，预览与打印一致。
+- **修复双面翻转选项无法选择**：补上 `duplex_check.toggled` 信号接线，勾选「双面打印」后长边 / 短边翻转可用。
+- 详见 [`docs/release-notes-v1.0.21.md`](docs/release-notes-v1.0.21.md)。
 
 ### 1.0.20
 
