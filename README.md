@@ -15,29 +15,27 @@
 | 系统 | 文件 |
 |---|---|
 | Windows（64 位） | `setup.exe`（v1.0.23） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.23 待本机重建） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.23_arm64.deb`（v1.0.23） |
 
-> **v1.0.23（Windows 已打包，本地提交，尚未发布 Release）**：修复 v1.0.22 原生 GDI 打印时
+> **v1.0.23（已发布 [Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.23)）**：修复 v1.0.22 原生 GDI 打印时
 > **多页文档只有最后一页有内容、前面页全空白**的问题——换页时 QPainter 未切到新画布、
 > DIB 位图源数据过早释放，两处均已修复。
 > v1.0.22 引入的 **原生 GDI + 完整 DEVMODE**（方向 / 双面 / A4 直接写进驱动，与 Foxit 打印方式一致）、
 > v1.0.21（QPrinter 方向兜底 + 双面信号接线）、v1.0.20（骑缝章崩溃修复）、v1.0.19 / v1.0.18 / v1.0.17 /
 > v1.0.16 / v1.0.15 的改动继续保留。
-> 本次为 **Windows 专属修复**；**麒麟 `.deb` 仍为 v1.0.20**，可在 aarch64 本机用
-> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.23_arm64.deb` 保持版本一致（麒麟不走 Windows 驱动，不受此问题影响）。
-> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 仍为当前已发布的最新版本；
-> [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
-> `lightpdf_1.0.9_arm64.deb` 保留为历史包。
+> 本次修复为 **Windows 打印专属**；麒麟版本身不走 Windows 驱动、不受此问题影响，但 `.deb` 已同步重建至 **v1.0.23**，与 Windows 版本一致。
+> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 及更早版本保留为历史发布。
 >
 > v1.0.23 校验值（SHA-256）：
 > `setup.exe` = `9f343d8851a8a631df3cf01e4b741b40217b2df19819b5756587cf4312570b2d`；
+> `lightpdf_1.0.23_arm64.deb` = `6515badc8d7fb816ac0beee2ce10dad39b099ae3e79b1633088513750395a00e`；
 > `lightpdf-linux-build-1.0.23.zip` = `ac4f90ec6367d0fc7691a957b1a93e6f3a5f5b0f7ec3595f3f38b4b60e5d7685`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
 **银河麒麟 / Debian 系（aarch64）**：
 ```bash
-sudo dpkg -i lightpdf_1.0.20_arm64.deb   # 重建 1.0.21 后改为 lightpdf_1.0.21_arm64.deb
+sudo dpkg -i lightpdf_1.0.23_arm64.deb
 sudo apt-get -f install     # 若提示缺依赖，自动补齐
 ```
 之后从开始菜单启动，或终端 `lightpdf 文件.pdf`；卸载 `sudo apt-get remove lightpdf`。
@@ -78,7 +76,7 @@ ISCC.exe installer.iss                    # 生成 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打包
-# 产物：dist/lightpdf_1.0.20_arm64.deb
+# 产物：dist/lightpdf_1.0.23_arm64.deb
 ```
 
 离线拷贝时**只需源码**（约 0.6 MB）：`app/`、`run_app.py`、`requirements.txt`、`icon.ico`、

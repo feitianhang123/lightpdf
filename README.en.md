@@ -13,22 +13,22 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 | OS | File |
 |---|---|
 | Windows (64-bit) | `setup.exe` (v1.0.23) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.23 to be rebuilt) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.23_arm64.deb` (v1.0.23) |
 
-> **v1.0.23 (Windows built, committed locally, Release not yet published)**: fixes v1.0.22's native-GDI printing bug where **only the last page of a multi-page document printed content and earlier pages came out blank** — the QPainter was not switched to the new canvas on page breaks, and the DIB bitmap source data was released too early. Both are fixed.
+> **v1.0.23 (published in [Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.23))**: fixes v1.0.22's native-GDI printing bug where **only the last page of a multi-page document printed content and earlier pages came out blank** — the QPainter was not switched to the new canvas on page breaks, and the DIB bitmap source data was released too early. Both are fixed.
 > The v1.0.22 native GDI + complete DEVMODE fix (orientation / duplex / A4 written directly into the driver, same way Foxit prints), v1.0.21 fixes (QPrinter orientation fallback + duplex signal wiring), v1.0.20 (riding-stamp dialog crash), v1.0.19 / v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
-> This is a **Windows-only fix**; the Kylin `.deb` is still **v1.0.20**. You may rebuild `lightpdf_1.0.23_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to keep versions in sync (Kylin does not use Windows drivers and is unaffected).
-> The [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) remains the latest published version. The
-> `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
+> The fix is **Windows-print-specific**; Kylin does not use Windows drivers and is unaffected, but its `.deb` has been rebuilt and synced to **v1.0.23** as well.
+> [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) and earlier releases are kept as historical builds.
 >
 > v1.0.23 SHA-256: `setup.exe` = `9f343d8851a8a631df3cf01e4b741b40217b2df19819b5756587cf4312570b2d`;
+> `lightpdf_1.0.23_arm64.deb` = `6515badc8d7fb816ac0beee2ce10dad39b099ae3e79b1633088513750395a00e`;
 > `lightpdf-linux-build-1.0.23.zip` = `ac4f90ec6367d0fc7691a957b1a93e6f3a5f5b0f7ec3595f3f38b4b60e5d7685`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
 **Kylin / Debian-family (aarch64)**:
 ```bash
-sudo dpkg -i lightpdf_1.0.20_arm64.deb
+sudo dpkg -i lightpdf_1.0.23_arm64.deb
 sudo apt-get -f install     # only if dependencies are missing
 ```
 Then launch it from the Start menu, or run `lightpdf file.pdf` in a terminal. Uninstall with `sudo apt-get remove lightpdf`.
@@ -69,7 +69,7 @@ ISCC.exe installer.iss                    # produces 安装包\setup.exe
 ```bash
 git clone https://github.com/feitianhang123/lightpdf.git && cd lightpdf
 bash packaging/linux/build-kylin.sh       # one command: install system deps if needed, then build
-# output: dist/lightpdf_1.0.20_arm64.deb
+# output: dist/lightpdf_1.0.23_arm64.deb
 ```
 
 For an offline transfer, **source only (~0.6 MB)** is needed: `app/`, `run_app.py`, `requirements.txt`, `icon.ico`,

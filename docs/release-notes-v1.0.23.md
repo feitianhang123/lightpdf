@@ -39,9 +39,9 @@ iR C3020 等驱动在 `EndPage` / `EndDoc` 阶段才真正读取 `StretchDIBits`
 | 文件 | 平台 | 大小（字节） | SHA-256 |
 |---|---|---|---|
 | `setup.exe` | Windows 64 位 | 94,217,593 | `9f343d8851a8a631df3cf01e4b741b40217b2df19819b5756587cf4312570b2d` |
-| `lightpdf_1.0.23_arm64.deb` | 银河麒麟 / Linux aarch64 | 仍为 1.0.20（可按需重建） | — |
+| `lightpdf_1.0.23_arm64.deb` | 银河麒麟 / Linux aarch64 | 67,298,560 | `6515badc8d7fb816ac0beee2ce10dad39b099ae3e79b1633088513750395a00e` |
 | `lightpdf-linux-build-1.0.23.zip` | 麒麟本机离线构建用源码快照 | 1,295,340 | `ac4f90ec6367d0fc7691a957b1a93e6f3a5f5b0f7ec3595f3f38b4b60e5d7685` |
 
-- 本次修复为 **Windows 专属**；麒麟版本身不走 Windows 驱动，不受此问题影响，可按需重建 1.0.23 保持版本一致。
+- 本次修复为 **Windows 打印专属**；麒麟版本身不走 Windows 驱动，不受此问题影响，但 `.deb` 已同步重建至 1.0.23，与 Windows 版本一致。
 - `lightpdf-linux-build-1.0.23.zip` 为**源码快照，非安装包**，供麒麟本机离线构建，内含全部修复代码。
-- 当前为**本地提交**，尚未 push / 发布 GitHub Release（等用户实测确认）。
+- 已发布为 GitHub [v1.0.23 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.23)，为当前最新版本。
