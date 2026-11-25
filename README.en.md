@@ -12,16 +12,16 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 | OS | File |
 |---|---|
-| Windows (64-bit) | `setup.exe` (v1.0.21) |
-| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.21 to be rebuilt) |
+| Windows (64-bit) | `setup.exe` (v1.0.22) |
+| Kylin V10 SP1 / Linux (ARM64, Phytium / Kunpeng) | `lightpdf_1.0.20_arm64.deb` (v1.0.20; v1.0.22 to be rebuilt) |
 
-> **v1.0.21 (Windows built, committed locally, Release not yet published)**: fixes print orientation being ignored ("every direction prints landscape"). The fallback-retry branch applied no page setup at all and fell back to the driver's default landscape; now both the full and fallback branches explicitly set A4 paper plus the selected orientation. Also restores the duplex "long-edge / short-edge flip" options by wiring up `duplex_check.toggled`.
-> The v1.0.20 fixes (riding-stamp dialog crash and multi-seal group overwrite), v1.0.19 (vertical-only riding slices with whole-seal linkage), v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
-> The Kylin `.deb` is still **v1.0.20** — rebuild `lightpdf_1.0.21_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to include this fix.
+> **v1.0.22 (Windows built, committed locally, Release not yet published)**: thoroughly fixes print orientation / duplex flips being ignored. v1.0.21's QPrinter-level fix did not work on network copiers such as the iR C3020 (the driver ignores the settings and falls back to its own default landscape). This version switches Windows physical printing to **native GDI with a complete DEVMODE**, writing orientation / duplex / A4 straight into the driver (the same way Foxit prints). Content layout still reuses the existing rendering logic, so scaling / booklet / N-up / tiling are unaffected.
+> The v1.0.21 fixes (QPrinter orientation fallback + duplex signal wiring), v1.0.20 (riding-stamp dialog crash), v1.0.19 / v1.0.18 / v1.0.17 / v1.0.16 / v1.0.15 changes are retained.
+> This is a **Windows-only fix**; the Kylin `.deb` is still **v1.0.20**. You may rebuild `lightpdf_1.0.22_arm64.deb` on a Kylin aarch64 machine with `packaging/linux/build-kylin.sh` to keep versions in sync (Kylin does not use Windows drivers and is unaffected).
 > The [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) remains the latest published version. The
 > `lightpdf_1.0.9_arm64.deb` in the [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) is kept as a historical build.
 >
-> v1.0.21 SHA-256: `setup.exe` = `44fec26b1fcc99ae01a34bd7c5ac3653a7593450f94ac2bc884878bc86bf5ddf`.
+> v1.0.22 SHA-256: `setup.exe` = `44d9cf05ed9baad0cac3ca401e0ec9565aeb07cbfc2111f1cdeea24a9c253206`.
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
@@ -82,6 +82,11 @@ See [`packaging/linux/README.md`](packaging/linux/README.md) (in Chinese).
 ## Changelog
 
 Detailed release notes are written in Chinese; links below point to those documents.
+
+### 1.0.22
+
+- **Thoroughly fixed Windows print orientation / duplex flips being ignored**: network copiers such as iR C3020 ignore QPrinter's settings, so Windows physical printing now uses native GDI with a complete DEVMODE, writing orientation / duplex / A4 straight into the driver. Content layout reuses existing logic, so scaling is unaffected. v1.0.21's QPrinter-level fix is kept as a fallback.
+- See [`docs/release-notes-v1.0.22.md`](docs/release-notes-v1.0.22.md).
 
 ### 1.0.21
 

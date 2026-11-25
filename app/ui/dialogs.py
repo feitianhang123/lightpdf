@@ -1790,6 +1790,58 @@ class PrintDialog(QDialog):
                 pass
         return pr
 
+    def _do_print_gdi(self, name: str) -> bool:
+        """Windows 原生 GDI 打印：直接把方向/双面写进驱动 DEVMODE。
+
+        返回 True 表示已完成打印；False 表示不可用/失败，调用方回退到 QPrinter。
+        """
+        import sys as _sys
+        if not _sys.platform.startswith("win"):
+            return False
+        try:
+            from ..core import win_print
+            if not win_print.is_available():
+                return False
+            landscape = self._landscape()
+            # 画布用固定 200 DPI 的 A4，避免按设备原生分辨率生成上百 MB 的位图；
+            # 贴图时按可打印区域拉伸，长宽比与 A4 一致所以不变形。
+            canvas_dpi = 200.0
+            cw = int(round(8.2677 * canvas_dpi))   # 210mm
+            ch = int(round(11.6929 * canvas_dpi))  # 297mm
+            if landscape:
+                cw, ch = ch, cw
+            dpi = 300
+            canvas = win_print.CanvasPrinter(cw, ch, canvas_dpi)
+            painter = QPainter(canvas.canvas)
+            if not painter.isActive():
+                return False
+            annots = self._annot_mode()
+            pages = self._pages()
+            try:
+                if self.h_booklet.isChecked():
+                    self._print_sides(painter, canvas, self._booklet_output_sides(pages),
+                                      dpi, True, annots)
+                elif self.h_nup.isChecked():
+                    k = self._pages_per_sheet()
+                    groups = [pages[i:i + k] for i in range(0, len(pages), k)]
+                    self._print_sides(painter, canvas, groups, dpi, False, annots)
+                elif self.h_tile.isChecked():
+                    self._print_tiled(painter, canvas, pages, dpi, annots)
+                else:
+                    self._print_plain(painter, canvas, pages, dpi, annots)
+            finally:
+                painter.end()
+            images = canvas.finish()
+            duplex = "none"
+            if self.duplex_check.isChecked():
+                duplex = "short" if self.flip_short.isChecked() else "long"
+            win_print.print_images(
+                name, images, landscape=landscape, duplex=duplex,
+                copies=self.copies_spin.value(), doc_name="lightpdf")
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
     def _do_print(self) -> None:
         name = self.printer_combo.currentText()
         tofile = self.tofile_check.isChecked()
@@ -1801,6 +1853,11 @@ class PrintDialog(QDialog):
                     return
             except Exception:  # noqa: BLE001
                 pass
+
+        # Windows 物理打印走原生 GDI，彻底绕开 QPrinter 不写驱动 DEVMODE 的问题
+        if name and not tofile and self._do_print_gdi(name):
+            self.accept()
+            return
 
         # 第 1 次：带完整设置；失败则第 2 次：退化为驱动默认值重试
         painter, printer = None, None

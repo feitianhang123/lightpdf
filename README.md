@@ -14,22 +14,23 @@
 
 | 系统 | 文件 |
 |---|---|
-| Windows（64 位） | `setup.exe`（v1.0.21） |
-| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.21 待本机重建） |
+| Windows（64 位） | `setup.exe`（v1.0.22） |
+| 银河麒麟 V10 SP1 / Linux（ARM64，飞腾 / 鲲鹏） | `lightpdf_1.0.20_arm64.deb`（v1.0.20；v1.0.22 待本机重建） |
 
-> **v1.0.21（Windows 已打包，本地提交，尚未发布 Release）**：修复打印方向「怎么选都是横向」——
-> 降级重试分支原本完全不施加页面设置，会退回驱动默认横向；现在完整分支与降级分支都显式设置 A4 纸张 + 所选方向。
-> 同时修复双面打印的「长边 / 短边翻转」无法选择——补上 `duplex_check.toggled` 信号接线。
-> v1.0.20（骑缝章崩溃与多章分组覆盖修复）、v1.0.19（骑缝章切片上下联动）、v1.0.18 / v1.0.17 /
+> **v1.0.22（Windows 已打包，本地提交，尚未发布 Release）**：**彻底修复**打印方向 / 双面翻转不生效——
+> v1.0.21 的 QPrinter 层面修正在 iR C3020 等网络复合机上无效（驱动不写 DEVMODE、用自身默认横向）。
+> 本版 Windows 物理打印改用 **原生 GDI + 完整 DEVMODE**，方向 / 双面 / A4 直接写进驱动（与 Foxit 打印方式一致），
+> 内容布局仍复用现有渲染逻辑，缩放 / 小册子 / N-up / 平铺不受影响。
+> v1.0.21（QPrinter 方向兜底 + 双面信号接线）、v1.0.20（骑缝章崩溃修复）、v1.0.19 / v1.0.18 / v1.0.17 /
 > v1.0.16 / v1.0.15 的改动继续保留。
-> **麒麟 `.deb` 仍为 v1.0.21 之前的 v1.0.20**，需在麒麟 aarch64 本机用 `packaging/linux/build-kylin.sh` 重建
-> `lightpdf_1.0.21_arm64.deb` 后才会包含本版打印修复。
+> 本次为 **Windows 专属修复**；**麒麟 `.deb` 仍为 v1.0.20**，可在 aarch64 本机用
+> `packaging/linux/build-kylin.sh` 重建 `lightpdf_1.0.22_arm64.deb` 保持版本一致（麒麟不走 Windows 驱动，不受此问题影响）。
 > [v1.0.20 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.20) 仍为当前已发布的最新版本；
 > [v1.0.9 Release](https://github.com/feitianhang123/lightpdf/releases/tag/v1.0.9) 里的
 > `lightpdf_1.0.9_arm64.deb` 保留为历史包。
 >
-> v1.0.21 校验值（SHA-256）：
-> `setup.exe` = `44fec26b1fcc99ae01a34bd7c5ac3653a7593450f94ac2bc884878bc86bf5ddf`。
+> v1.0.22 校验值（SHA-256）：
+> `setup.exe` = `44d9cf05ed9baad0cac3ca401e0ec9565aeb07cbfc2111f1cdeea24a9c253206`。
 
 **Windows**：双击 `setup.exe` 按向导安装（默认 `C:\Program Files\轻PDF编辑器`），开始菜单出现「轻PDF编辑器」。
 
@@ -87,6 +88,11 @@ bash packaging/linux/build-kylin.sh       # 一键：按需装系统依赖 + 打
 版本号自动读取 `app/version.py`，无需手改脚本。详见 [`packaging/linux/README.md`](packaging/linux/README.md)。
 
 ## 更新日志
+
+### 1.0.22
+
+- **彻底修复 Windows 打印方向 / 双面翻转不生效**：iR C3020 等网络复合机驱动不接收 QPrinter 的设置，改用 Windows 原生 GDI + 完整 DEVMODE 直接打印，方向 / 双面 / A4 真正写进驱动；内容布局复用现有逻辑，缩放等设置不受影响。v1.0.21 的 QPrinter 层修复保留为兜底。
+- 详见 [`docs/release-notes-v1.0.22.md`](docs/release-notes-v1.0.22.md)。
 
 ### 1.0.21
 
