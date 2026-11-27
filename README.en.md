@@ -26,6 +26,17 @@ Get the installers from [**Releases**](https://github.com/feitianhang123/lightpd
 
 **Windows**: double-click `setup.exe` and follow the wizard (default location `C:\Program Files\轻PDF编辑器`). A "轻PDF编辑器" entry appears in the Start menu.
 
+> **See a security warning on first install?**
+> This app is independently developed and is currently **not code-signed**, so Windows may show
+> "Windows protected your PC" (SmartScreen) or an "Unknown publisher" prompt on first run. This is
+> normal for new software — not a virus. Just make sure the installer came from the official GitHub
+> Releases page above and matches the SHA-256 checksum, then let it through:
+> 1. On the blue SmartScreen screen, click **More info** → **Run anyway**;
+> 2. If the UAC prompt asks "Do you want to allow this app to make changes to your device?", click **Yes**;
+> 3. On first launch, if the warning appears again, choose **More info** → **Run anyway** once more. It won't ask again after that.
+>
+> Avoid third-party download mirrors — stick to this project's Releases page and verify with the checksums above.
+
 **Kylin / Debian-family (aarch64)**:
 ```bash
 sudo dpkg -i lightpdf_1.0.23_arm64.deb
